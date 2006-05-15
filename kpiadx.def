@@ -1,0 +1,4 @@
+LIBRARY	kpiadx
+
+EXPORTS
+	kmp_GetTestModule
