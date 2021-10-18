@@ -26,12 +26,12 @@ enum class ADXVersion: uint8_t
 	ADX_VERSION_5	= 0x05,
 };
 
-constexpr auto ADX_HEDAER_SIZE = 0x14;	// 20
+constexpr auto ADX_HEADER_SIZE = 0x14;	// 20
 constexpr auto ADX_V3_HEADER_SIZE = 0x2c;	// 44
 constexpr auto ADX_V4_HEADER_SIZE = 0x38;	// 56
 
-constexpr auto ADX_V3_PART_SIZE = (ADX_V3_HEADER_SIZE - ADX_HEDAER_SIZE);
-constexpr auto ADX_V4_PART_SIZE = (ADX_V4_HEADER_SIZE - ADX_HEDAER_SIZE);
+constexpr auto ADX_V3_PART_SIZE = (ADX_V3_HEADER_SIZE - ADX_HEADER_SIZE);
+constexpr auto ADX_V4_PART_SIZE = (ADX_V4_HEADER_SIZE - ADX_HEADER_SIZE);
 
 
 struct ADXheaderCommon
@@ -59,7 +59,7 @@ struct ADXheaderCommon
 	}
 };
 
-static_assert(sizeof(ADXheaderCommon) == ADX_HEDAER_SIZE, "sizeof ADX common common is not 20 bytes.  maybe padding?");
+static_assert(sizeof(ADXheaderCommon) == ADX_HEADER_SIZE, "sizeof ADX common common is not 20 bytes.  maybe padding?");
 
 struct ADXheaderV3
 {
@@ -140,3 +140,19 @@ struct ADXheader
 };
 
 static_assert(sizeof(ADXheader) == ADX_V4_HEADER_SIZE, "sizeof ADXheader is not 0x38 bytes.  maybe padding?");
+
+// note: AFS is in LITTLE ENDIAN
+
+constexpr auto AFS_SIGNATURE = "AFS\0";
+
+struct AFSheader
+{
+	char signature[4];	// "AFS\0"
+	uint32_t num_of_files;
+};
+
+struct AFSitem
+{
+	uint32_t offset;
+	uint32_t length;
+};

@@ -73,24 +73,28 @@
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>kpisdk;$(IncludePath)</IncludePath>
+    <TargetExt>.kpi</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>kpisdk;$(IncludePath)</IncludePath>
+    <TargetExt>.kpi</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>kpisdk;$(IncludePath)</IncludePath>
+    <TargetExt>.kpi</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>kpisdk;$(IncludePath)</IncludePath>
+    <TargetExt>.kpi</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -209,6 +213,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="adx.h" />
+    <ClInclude Include="KpiPartialFile.h" />
     <ClInclude Include="KpiADXDecoder.h" />
     <ClInclude Include="KpiADXDecoderModule.h" />
     <ClInclude Include="kpiadx.h" />

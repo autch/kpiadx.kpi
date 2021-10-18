@@ -59,10 +59,13 @@
     <ClInclude Include="KpiADXDecoderModule.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="KpiADXDecoder.h">
-      <Filter>ソース ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="adx.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="KpiADXDecoder.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="KpiPartialFile.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>

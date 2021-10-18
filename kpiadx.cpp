@@ -15,7 +15,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD dwReasonForCall, LPVOID lpReserved)
 {
 	if (dwReasonForCall == DLL_PROCESS_ATTACH)
 	{
-		g_hModule = (HMODULE)hModule;
+		g_hModule = static_cast<HMODULE>(hModule);
 		DisableThreadLibraryCalls(g_hModule);
 	}
 	return TRUE;

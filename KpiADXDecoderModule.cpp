@@ -6,7 +6,7 @@
 #include "adx.h"
 
 // {DBCA462E-44CF-4085-ABCB-418FDDFA2B6F}
-static constexpr GUID KPIADX_GUID = 
+static constexpr GUID KPIADX_GUID =
 { 0xdbca462e, 0x44cf, 0x4085, { 0xab, 0xcb, 0x41, 0x8f, 0xdd, 0xfa, 0x2b, 0x6f } };
 
 static constexpr KPI_DECODER_MODULEINFO decoder_info =
@@ -18,8 +18,8 @@ static constexpr KPI_DECODER_MODULEINFO decoder_info =
 	.guid = KPIADX_GUID,
 	.cszDescription = KPIADX_DESC,
 	.cszCopyright = KPIADX_COPYRIGHT,
-	.cszSupportExts = L".adx",
-	.cszMultiSongExts = nullptr,
+	.cszSupportExts = L".adx/.afs",
+	.cszMultiSongExts = L".afs",
 	.pvReserved1 = nullptr,
 	.pvReserved2 = nullptr,
 	.dwSupportTagInfo = 0,
@@ -36,10 +36,10 @@ DWORD KpiADXDecoderModule::Open(const KPI_MEDIAINFO* cpRequest, IKpiFile* pFile,
 {
 	auto* decoder = new KpiADXDecoder();
 	const DWORD dwCount = decoder->Open(cpRequest, pFile);
-	if(dwCount == 0)
+	if (dwCount == 0)
 	{
 		::OutputDebugStringW(L"decoder returned no songs");
-		delete decoder;
+		decoder->Release();
 		*ppDecoder = nullptr;
 		return 0;
 	}

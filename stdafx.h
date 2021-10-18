@@ -12,3 +12,6 @@
 
 // TODO: プログラムに必要な追加ヘッダーをここで参照してください。
 #include "kmp_pi.h"
+#include "kpi.h"
+#include "kpi_decoder.h"
+#include "kpi_impl.h"
