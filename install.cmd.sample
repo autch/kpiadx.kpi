@@ -1,5 +1,4 @@
-set DEST="c:\program files\kbmedia player\plugins\autch\kpiadx"
-if not exist %DEST% mkdir %DEST%
+set DEST=%2
+if not exist %DEST%\nul mkdir %DEST%
 copy .\%1\kpiadx.kpi %DEST% /y
-copy .\kpiadx.txt %DEST% /y
 copy .\%1\*.pdb %DEST% /y

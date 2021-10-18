@@ -1,4 +1,2 @@
-LIBRARY	kpiadx
-
 EXPORTS
-	kmp_GetTestModule
+	kpi_CreateInstance
