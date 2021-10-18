@@ -13,22 +13,22 @@ HMODULE g_hModule;
 
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD dwReasonForCall, LPVOID lpReserved)
 {
-	if (dwReasonForCall == DLL_PROCESS_ATTACH)
-	{
-		g_hModule = static_cast<HMODULE>(hModule);
-		DisableThreadLibraryCalls(g_hModule);
-	}
-	return TRUE;
+    if (dwReasonForCall == DLL_PROCESS_ATTACH)
+    {
+        g_hModule = static_cast<HMODULE>(hModule);
+        DisableThreadLibraryCalls(g_hModule);
+    }
+    return TRUE;
 }
 
-HRESULT WINAPI kpi_CreateInstance(REFIID riid, void **ppvObject, IKpiUnknown *pUnknown)
+HRESULT WINAPI kpi_CreateInstance(REFIID riid, void** ppvObject, IKpiUnknown* pUnknown)
 {
-	if(IsEqualIID(riid, IID_IKpiDecoderModule))
-	{
-		const auto pModule = new KpiADXDecoderModule();
-		*ppvObject = static_cast<IKpiDecoderModule*>(pModule);
-		return S_OK;
-	}
-	*ppvObject = nullptr;
-	return E_NOINTERFACE;
+    if (IsEqualIID(riid, IID_IKpiDecoderModule))
+    {
+        const auto pModule = new KpiADXDecoderModule();
+        *ppvObject = static_cast<IKpiDecoderModule*>(pModule);
+        return S_OK;
+    }
+    *ppvObject = nullptr;
+    return E_NOINTERFACE;
 }

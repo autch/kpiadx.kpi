@@ -11,38 +11,38 @@ static constexpr GUID KPIADX_GUID =
 
 static constexpr KPI_DECODER_MODULEINFO decoder_info =
 {
-	.cb = sizeof(KPI_DECODER_MODULEINFO),
-	.dwModuleVersion = KPI_DECODER_MODULE_VERSION,
-	.dwPluginVersion = KPIADX_VERSION,
-	.dwMultipleInstance = KPI_MULTINST_INFINITE,
-	.guid = KPIADX_GUID,
-	.cszDescription = KPIADX_DESC,
-	.cszCopyright = KPIADX_COPYRIGHT,
-	.cszSupportExts = L".adx/.afs",
-	.cszMultiSongExts = L".afs",
-	.pvReserved1 = nullptr,
-	.pvReserved2 = nullptr,
-	.dwSupportTagInfo = 0,
-	.dwSupportConfig = 0,
-	.dwReserved = { 0, 0, 0, 0 }
+    .cb = sizeof(KPI_DECODER_MODULEINFO),
+    .dwModuleVersion = KPI_DECODER_MODULE_VERSION,
+    .dwPluginVersion = KPIADX_VERSION,
+    .dwMultipleInstance = KPI_MULTINST_INFINITE,
+    .guid = KPIADX_GUID,
+    .cszDescription = KPIADX_DESC,
+    .cszCopyright = KPIADX_COPYRIGHT,
+    .cszSupportExts = L".adx/.afs",
+    .cszMultiSongExts = L".afs",
+    .pvReserved1 = nullptr,
+    .pvReserved2 = nullptr,
+    .dwSupportTagInfo = 0,
+    .dwSupportConfig = 0,
+    .dwReserved = { 0, 0, 0, 0 }
 };
 
 void KpiADXDecoderModule::GetModuleInfo(const KPI_DECODER_MODULEINFO** ppInfo)
 {
-	*ppInfo = &decoder_info;
+    *ppInfo = &decoder_info;
 }
 
 DWORD KpiADXDecoderModule::Open(const KPI_MEDIAINFO* cpRequest, IKpiFile* pFile, IKpiFolder* pFolder, IKpiDecoder** ppDecoder)
 {
-	auto* decoder = new KpiADXDecoder();
-	const DWORD dwCount = decoder->Open(cpRequest, pFile);
-	if (dwCount == 0)
-	{
-		::OutputDebugStringW(L"decoder returned no songs");
-		decoder->Release();
-		*ppDecoder = nullptr;
-		return 0;
-	}
-	*ppDecoder = static_cast<IKpiDecoder*>(decoder);
-	return dwCount;
+    auto* decoder = new KpiADXDecoder();
+    const DWORD dwCount = decoder->Open(cpRequest, pFile);
+    if (dwCount == 0)
+    {
+        ::OutputDebugStringW(L"decoder returned no songs");
+        decoder->Release();
+        *ppDecoder = nullptr;
+        return 0;
+    }
+    *ppDecoder = static_cast<IKpiDecoder*>(decoder);
+    return dwCount;
 }
