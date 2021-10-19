@@ -12,8 +12,8 @@ constexpr auto ADX_COPYRIGHT_SIGNATURE = "(c)CRI";
 
 enum class ADXEncodingType : uint8_t
 {
-    ADX_PRESET_COEF = 0x02,
-    ADX_STANDARD = 0x03,
+    ADX_FIXED_COEF = 0x02,
+    ADX_LINEAR_SCALE = 0x03,
     ADX_EXP_SCALE = 0x04,
     ADX_AHX_10 = 0x10,
     ADX_AHX_11 = 0x11,
@@ -141,6 +141,7 @@ struct ADXheader
 
 static_assert(sizeof(ADXheader) == ADX_V4_HEADER_SIZE, "sizeof ADXheader is not 0x38 bytes.  maybe padding?");
 
+// https://azuco.sakura.ne.jp/column/ag_adx/cri.html
 // note: AFS is in LITTLE ENDIAN
 
 constexpr auto AFS_SIGNATURE = "AFS\0";

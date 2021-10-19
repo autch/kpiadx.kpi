@@ -181,6 +181,20 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
         return 0;
     }
 
+    switch(header.common.encoding_type)
+    {
+    case ADXEncodingType::ADX_FIXED_COEF:
+    case ADXEncodingType::ADX_LINEAR_SCALE:
+    case ADXEncodingType::ADX_EXP_SCALE:
+        // supported
+        break;
+    case ADXEncodingType::ADX_AHX_10:
+    case ADXEncodingType::ADX_AHX_11:
+    default:
+        ::OutputDebugStringW(L"select: unsupported encoding type\n");
+        return 0;
+    }
+
     {
         constexpr auto pi = 3.14159265358979;
         const double a = std::sqrt(2.0) - std::cos(
@@ -261,7 +275,21 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
         wsprintf(buf.get(), L"%d.%03dkbps", bps / 1000, bps % 1000);
         pTagInfo->wSetValueW(SZ_KMP_NAME_BITRATE_W, -1, buf.get(), -1);
 
-        set_tag(L"ADX_EncodingType", header.common.encoding_type);
+        switch(header.common.encoding_type)
+        {
+        case ADXEncodingType::ADX_EXP_SCALE:
+            pTagInfo->wSetValueW(L"ADX_EncodingType", -1, L"4 - Exponent Scale", -1);
+            break;
+        case ADXEncodingType::ADX_LINEAR_SCALE:
+            pTagInfo->wSetValueW(L"ADX_EncodingType", -1, L"3 - Linear Scale", -1);
+            break;
+        case ADXEncodingType::ADX_FIXED_COEF:
+            pTagInfo->wSetValueW(L"ADX_EncodingType", -1, L"2 - Fixed Coefficient", -1);
+            break;
+        default:
+            wsprintf(buf.get(), L"%d (unsupported)", header.common.encoding_type);
+            pTagInfo->wSetValueW(L"ADX_EncodingType", -1, buf.get(), -1);
+        }
         set_tag(L"ADX_Version", header.common.version);
         set_tag(L"ADX_BlockSize", header.common.block_size);
         set_tag(L"ADX_SampleBitDepth", header.common.sample_bitdepth);
@@ -309,8 +337,11 @@ UINT64 KpiADXDecoder::Seek(UINT64 qwPosSample, DWORD dwFlag)
 // 1w + 32h 分デコードする
 void KpiADXDecoder::DecodeBlock(BYTE* pSource, int16_t* pDest, ADXContext& context)
 {
-    const int16_t nScale = get_be<int16_t>(pSource) & 0x1fff;
+    int16_t nScale = get_be<int16_t>(pSource) & 0x1fff;
     int s1 = context.s[0], s2 = context.s[1];
+
+    if(header.common.encoding_type == ADXEncodingType::ADX_EXP_SCALE)
+        nScale = 1 << (12 - nScale);
 
     pSource += 2;
     for (int i = 0; i < header.common.block_size - sizeof(int16_t); i++)
@@ -337,6 +368,44 @@ void KpiADXDecoder::DecodeBlock(BYTE* pSource, int16_t* pDest, ADXContext& conte
     context.s[1] = s2;
 }
 
+// https://github.com/Thealexbarney/VGAudio/tree/master/src/VGAudio/Codecs/CriAdx
+
+void KpiADXDecoder::DecodeBlock_Fixed(BYTE* pSource, int16_t* pDest, ADXContext& context)
+{
+    int16_t fScale = get_be<int16_t>(pSource);
+    int16_t nScale = fScale & 0x1fff;
+    int s1 = context.s[0], s2 = context.s[1];
+
+    if(header.common.encoding_type == ADXEncodingType::ADX_EXP_SCALE)
+        nScale = 1 << (12 - nScale);
+
+    const int predictor = fScale >> 13;
+
+    pSource += 2;
+    for (int i = 0; i < header.common.block_size - sizeof(int16_t); i++)
+    {
+        int predict = ADX_TYPE2_COEFF[predictor][0] * s1 + ADX_TYPE2_COEFF[predictor][1] * s2;
+        int d = *pSource >> 4;
+        if (d & 0x08)  d -= 0x10;
+        int s0 = d * nScale + (predict >> 12);
+        if (s0 > 0x7fff)  s0 = 0x7fff;
+        if (s0 < -0x7fff)  s0 = -0x7fff;
+        *pDest++ = s0 & 0xffff;  s2 = s1;  s1 = s0;
+
+        predict = ADX_TYPE2_COEFF[predictor][0] * s1 + ADX_TYPE2_COEFF[predictor][1] * s2;
+        d = *pSource & 0x0f;
+        if (d & 0x08)  d -= 0x10;
+        s0 = d * nScale + (predict >> 12);
+        if (s0 > 0x7fff)  s0 = 0x7fff;
+        if (s0 < -0x7fff)  s0 = -0x7fff;
+        *pDest++ = s0 & 0xffff;  s2 = s1;  s1 = s0;
+
+        pSource++;
+    }
+    context.s[0] = s1;
+    context.s[1] = s2;
+}
+
 // dwSize (% dwUnitRender == 0) の分だけデコードする
 DWORD KpiADXDecoder::DecodeBuffer(BYTE* pBuffer, DWORD dwSizeSamples)
 {
@@ -353,7 +422,10 @@ DWORD KpiADXDecoder::DecodeBuffer(BYTE* pBuffer, DWORD dwSizeSamples)
         {
             for (int ch = 0; ch < channels; ch++)
             {
-                DecodeBlock(pSource, src[ch].s.data(), ctx[ch]);
+                if(header.common.encoding_type == ADXEncodingType::ADX_FIXED_COEF)
+                    DecodeBlock_Fixed(pSource, src[ch].s.data(), ctx[ch]);
+                else
+                    DecodeBlock(pSource, src[ch].s.data(), ctx[ch]);
                 pSource += header.common.block_size;
             }
 

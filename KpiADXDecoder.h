@@ -33,12 +33,12 @@ private:
 
     double coeff[2]{ 0, 0 };                // フィルタ係数
 
-    static constexpr uint16_t ADX_TYPE2_COEFF[4][2] =
+    static constexpr int16_t ADX_TYPE2_COEFF[4][2] =
     {
         {0x0000, 0x0000},
         {0x0f00, 0x0000},
-        {0x1cc0, 0xf300},
-        {0x1880, 0xf240}
+        {0x1cc0, static_cast<int16_t>(0xf300u)},
+        {0x1880, static_cast<int16_t>(0xf240u)}
     };
 
     struct ADXContext
@@ -77,6 +77,7 @@ private:
     std::vector<BYTE> decodedBuffer;        // デコード一回分のPCM
 
     void DecodeBlock(BYTE* pSource, int16_t* pDest, ADXContext& context);
+    void DecodeBlock_Fixed(BYTE* pSource, int16_t* pDest, ADXContext& context);
     DWORD DecodeBuffer(BYTE* pBuffer, DWORD dwSize);
 
     DWORD IsThisADX(IKpiFile* pFile);
