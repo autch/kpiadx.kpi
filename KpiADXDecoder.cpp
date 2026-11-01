@@ -40,20 +40,20 @@ namespace
 }
 
 
-// pFile の先頭が ADX ならヘッダを読んで true を返す
-bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, ADXheader& header)
+// pFile の qwOffset から ADX が始まっていればヘッダを読んで true を返す
+bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, UINT64 qwOffset, ADXheader& header)
 {
     BYTE buf[sizeof(ADXheader)]{};
     uint8_t signature[6];
 
-    pFile->Seek(0, FILE_BEGIN);
+    pFile->Seek(static_cast<INT64>(qwOffset), FILE_BEGIN);
     const DWORD got = pFile->Read(buf, sizeof buf);
     if (got < ADX_HEADER_SIZE)
     {
         ::OutputDebugStringW(L"isADX: cannot read whole common\n");
         return false;
     }
-    // ヘッダの短い ADX(AAX のセグメントなど)では後半は未使用
+    // ファイルの末尾に届いた分は 0 にする
     memset(buf + got, 0, sizeof buf - got);
     memcpy(&header, buf, sizeof header);
     header.prepare();
@@ -70,7 +70,7 @@ bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, ADXheader& header)
         ::OutputDebugStringW(L"isADX: copyright offset is too small\n");
         return false;
     }
-    pFile->Seek(static_cast<INT64>(header.common.copyright_offset) - 2, FILE_BEGIN);
+    pFile->Seek(static_cast<INT64>(qwOffset + header.common.copyright_offset - 2), FILE_BEGIN);
     if (pFile->Read(signature, 6) != 6)
     {
         ::OutputDebugStringW(L"isADX: cannot read at signature offset\n");
@@ -141,7 +141,7 @@ DWORD KpiADXDecoder::Open(const KPI_MEDIAINFO* cpRequest, IKpiFile* pFile)
     ADXheader header{};
     std::vector<AAXsegment> aax_segments;
     DWORD dwSongs;
-    if (readADXHeader(pFile, header))
+    if (readADXHeader(pFile, 0, header))
     {
         dwSongs = 1;
         source_type_ = SourceType::SOURCE_ADX;
@@ -178,10 +178,10 @@ void KpiADXDecoder::close()
 
 void KpiADXDecoder::clearSong()
 {
-    for (auto& seg : segments_)
+    if (song_file_ != nullptr)
     {
-        if (seg.file != nullptr)
-            seg.file->Release();
+        song_file_->Release();
+        song_file_ = nullptr;
     }
     segments_.clear();
     total_samples_ = 0;
@@ -194,11 +194,12 @@ void KpiADXDecoder::clearSong()
     history_exact_ = false;
 }
 
-// pFile の ADX を曲の末尾にセグメントとして加える
-bool KpiADXDecoder::addSegment(IKpiFile* pFile, bool aax_loop)
+// song_file_ の offset から size バイトの ADX を曲の末尾にセグメントとして加える
+// size が KPI_FILE_EOF(大きさ不明)ならファイルの終わりまで
+bool KpiADXDecoder::addSegment(uint64_t offset, uint64_t size, bool aax_loop)
 {
     Segment seg;
-    if (!readADXHeader(pFile, seg.header))
+    if (!readADXHeader(song_file_, offset, seg.header))
         return false;
 
     const auto& common = seg.header.common;
@@ -245,26 +246,30 @@ bool KpiADXDecoder::addSegment(IKpiFile* pFile, bool aax_loop)
 
     seg.samples_per_block = (common.block_size - sizeof(uint16_t)) * 8 / common.sample_bitdepth;
     seg.data_offset = static_cast<uint64_t>(common.copyright_offset) + 4;
+    if (seg.data_offset > size)
+    {
+        ::OutputDebugStringW(L"select: ADX header is larger than the segment\n");
+        return false;
+    }
+    seg.offset = offset;
+    seg.end_offset = (size > std::numeric_limits<uint64_t>::max() - offset) ? std::numeric_limits<uint64_t>::max() : offset + size;
     seg.start_sample = total_samples_;
     seg.samples = common.total_samples;
     seg.aax_loop = aax_loop;
 
-    pFile->AddRef();
-    seg.file = pFile;
     segments_.push_back(seg);
     total_samples_ += seg.samples;
     return true;
 }
 
-bool KpiADXDecoder::loadSong(IKpiFile* pSong)
+// song_file_ の曲を読み込む
+bool KpiADXDecoder::loadSong()
 {
-    clearSong();
-
     ADXheader header{};
     std::vector<AAXsegment> aax_segments;
-    if (readADXHeader(pSong, header))
+    if (readADXHeader(song_file_, 0, header))
     {
-        if (!addSegment(pSong, false))
+        if (!addSegment(0, song_file_->GetSize(), false))
             return false;
 
         // ループ情報は ADX のヘッダにある
@@ -290,15 +295,12 @@ bool KpiADXDecoder::loadSong(IKpiFile* pSong)
         loop_start_sample_ = loop_start;
         loop_end_sample_ = loop_end;
     }
-    else if (parseAAX(pSong, aax_segments))
+    else if (parseAAX(song_file_, aax_segments))
     {
         song_is_aax_ = true;
         for (const auto& s : aax_segments)
         {
-            IKpiFile* segment_file = new KpiPartialFile(pSong, s.offset, s.offset + s.size);
-            const bool ok = addSegment(segment_file, s.loop);
-            segment_file->Release();
-            if (!ok)
+            if (!addSegment(s.offset, s.size, s.loop))
                 return false;
         }
 
@@ -423,20 +425,18 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
 
     try
     {
-        IKpiFile* song;
+        clearSong();
         if (source_type_ == SourceType::SOURCE_AFS)
         {
             const auto& item = afs_items_[dwNumber - 1];
-            song = new KpiPartialFile(kpi_file_, item.offset, static_cast<UINT64>(item.offset) + item.length);
+            song_file_ = new KpiPartialFile(kpi_file_, item.offset, static_cast<UINT64>(item.offset) + item.length);
         }
         else
         {
-            song = kpi_file_;
-            song->AddRef();
+            song_file_ = kpi_file_;
+            song_file_->AddRef();
         }
-        const bool ok = loadSong(song);
-        song->Release();     // セグメントが参照を持っている
-        if (!ok)
+        if (!loadSong())
         {
             clearSong();
             return 0;
@@ -529,7 +529,7 @@ void KpiADXDecoder::enterSegment(size_t index, uint64_t sample_in_segment, bool 
     }
 
     state_.next_block = sample_in_segment / seg.samples_per_block;
-    seg.file->Seek(static_cast<INT64>(seg.data_offset + state_.next_block * block_size_ * channels_), FILE_BEGIN);
+    song_file_->Seek(static_cast<INT64>(blockOffset(seg, state_.next_block)), FILE_BEGIN);
 
     const auto samples_to_skip = static_cast<uint32_t>(sample_in_segment % seg.samples_per_block);
     if (samples_to_skip > 0)
@@ -544,8 +544,14 @@ void KpiADXDecoder::restoreLoopState()
 {
     const auto& seg = segments_[loop_state_.segment];
     state_ = loop_state_;
-    seg.file->Seek(static_cast<INT64>(seg.data_offset + state_.next_block * block_size_ * channels_), FILE_BEGIN);
+    song_file_->Seek(static_cast<INT64>(blockOffset(seg, state_.next_block)), FILE_BEGIN);
     history_exact_ = true;
+}
+
+// セグメントの block 番目のブロックの song_file_ での位置
+uint64_t KpiADXDecoder::blockOffset(const Segment& seg, uint64_t block) const
+{
+    return seg.offset + seg.data_offset + block * source_buffer_.size();
 }
 
 // 現在のセグメントの次のブロックを state_.decoded にデコードする
@@ -553,12 +559,16 @@ void KpiADXDecoder::restoreLoopState()
 bool KpiADXDecoder::decodeNextBlock()
 {
     const auto& seg = segments_[state_.segment];
+    const uint64_t block_offset = blockOffset(seg, state_.next_block);
     state_.next_block++;
     state_.decoded_read = 0;
     state_.decoded_count = seg.samples_per_block;
 
+    // ブロックがセグメントの終わりをはみ出す場合は読まない
+    // (AAX では次のセグメントのデータになっている)
     const DWORD bytes_to_read = static_cast<DWORD>(source_buffer_.size());
-    if (seg.file->Read(source_buffer_.data(), bytes_to_read) < bytes_to_read)
+    if (block_offset + bytes_to_read > seg.end_offset
+        || song_file_->Read(source_buffer_.data(), bytes_to_read) < bytes_to_read)
     {
         std::fill(state_.decoded.begin(), state_.decoded.end(), static_cast<int16_t>(0));
         return false;

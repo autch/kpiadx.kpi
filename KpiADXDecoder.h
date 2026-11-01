@@ -37,14 +37,15 @@ private:
         {0x1880, static_cast<int16_t>(0xf240u)}
     };
 
-    // 1 ADX stream.  a song is a sequence of segments (only AAX has 2 or more)
+    // 1 ADX stream in song_file_.  a song is a sequence of segments (only AAX has 2 or more)
     struct Segment
     {
-        IKpiFile* file{ nullptr };          // owns a reference
+        uint64_t offset{ 0 };               // offset of the ADX stream in song_file_
+        uint64_t end_offset{ 0 };           // end of the ADX stream in song_file_
         ADXheader header{};
         int16_t coeff[2]{ 0, 0 };           // ADX filter coefficients
         int samples_per_block{ 0 };         // # of samples stored in an ADX block, for typical 18 bytes block, this is 32
-        uint64_t data_offset{ 0 };          // offset of the first block in file
+        uint64_t data_offset{ 0 };          // offset of the first block from the beginning of the ADX stream
         uint64_t start_sample{ 0 };         // position of the first sample in the song
         uint64_t samples{ 0 };
         bool aax_loop{ false };             // AAX lpflg
@@ -61,6 +62,7 @@ private:
     KPI_MEDIAINFO mediainfo_{};
 
     // the selected song
+    IKpiFile* song_file_{ nullptr };        // kpi_file_ itself, or a member of AFS
     std::vector<Segment> segments_;
     int channels_{ 0 };
     int block_size_{ 0 };
@@ -90,18 +92,19 @@ private:
 
     void close();
     void clearSong();
-    bool loadSong(IKpiFile* pSong);
-    bool addSegment(IKpiFile* pFile, bool aax_loop);
+    bool loadSong();
+    bool addSegment(uint64_t offset, uint64_t size, bool aax_loop);
     void fillMediaInfo(DWORD dwNumber);
     void extract_tags(IKpiTagInfo* pTagInfo) const;
 
     void positionAt(UINT64 qwPosSample);
     void enterSegment(size_t index, uint64_t sample_in_segment, bool carry_history);
     void restoreLoopState();
+    uint64_t blockOffset(const Segment& seg, uint64_t block) const;
     DWORD render(int16_t* pOutput, DWORD dwSizeSample);
     bool decodeNextBlock();
     void decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDest, ADXContext& context) const;
 
-    static bool readADXHeader(IKpiFile* pFile, ADXheader& header);
+    static bool readADXHeader(IKpiFile* pFile, UINT64 qwOffset, ADXheader& header);
     DWORD readAFS(IKpiFile* pFile);
 };
