@@ -25,7 +25,8 @@ private:
     enum class SourceType
     {
         SOURCE_ADX,     // 1 ADX stream
-        SOURCE_AFS      // archive of ADX, 1 song per member
+        SOURCE_AAX,     // 1 song made of ADX segments
+        SOURCE_AFS      // archive of ADX/AAX, 1 song per member
     };
 
     static constexpr int16_t ADX_TYPE2_COEFF[4][2] =
@@ -36,7 +37,7 @@ private:
         {0x1880, static_cast<int16_t>(0xf240u)}
     };
 
-    // 1 ADX stream.  a song is a sequence of segments
+    // 1 ADX stream.  a song is a sequence of segments (only AAX has 2 or more)
     struct Segment
     {
         IKpiFile* file{ nullptr };          // owns a reference
@@ -46,6 +47,7 @@ private:
         UINT64 data_offset{ 0 };            // offset of the first block in file
         UINT64 start_sample{ 0 };           // position of the first sample in the song
         UINT64 samples{ 0 };
+        bool aax_loop{ false };             // AAX lpflg
     };
 
     struct ADXContext
@@ -66,6 +68,7 @@ private:
     bool loop_enabled_{ false };
     UINT64 loop_start_sample_{ 0 };
     UINT64 loop_end_sample_{ 0 };
+    bool song_is_aax_{ false };
 
     // playback state
     struct PlayState
@@ -74,6 +77,7 @@ private:
         UINT64 next_block{ 0 };             // index of the next block to decode in the segment
         UINT64 position{ 0 };               // position in the song of the next sample to render
         std::vector<ADXContext> ctx;        // ADX history samples per channel, size = # of channels
+        std::vector<ADXContext> tail;       // last 2 rendered samples per channel, history for the next segment
         std::vector<int16_t> decoded;       // interleaved PCM of a block, size = (samples per block) * (# of channels)
         UINT32 decoded_read{ 0 };           // # of samples in decoded already rendered
         UINT32 decoded_count{ 0 };          // # of samples in decoded
@@ -87,12 +91,12 @@ private:
     void close();
     void clearSong();
     bool loadSong(IKpiFile* pSong);
-    bool addSegment(IKpiFile* pFile);
+    bool addSegment(IKpiFile* pFile, bool aax_loop);
     void fillMediaInfo(DWORD dwNumber);
     void extract_tags(IKpiTagInfo* pTagInfo) const;
 
     void positionAt(UINT64 qwPosSample);
-    void enterSegment(size_t index, UINT64 sample_in_segment);
+    void enterSegment(size_t index, UINT64 sample_in_segment, bool carry_history);
     void restoreLoopState();
     DWORD render(int16_t* pOutput, DWORD dwSizeSample);
     bool decodeNextBlock();

@@ -59,6 +59,9 @@
     <ClInclude Include="KpiADXDecoderModule.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="aax.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
     <ClInclude Include="adx.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>

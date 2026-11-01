@@ -212,6 +212,7 @@
     <None Include="kpiadx.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="aax.h" />
     <ClInclude Include="adx.h" />
     <ClInclude Include="bitstream.h" />
     <ClInclude Include="KpiPartialFile.h" />
