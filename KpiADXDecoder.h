@@ -5,7 +5,6 @@
 #include "kpi_decoder.h"
 #include "kpi_impl.h"
 #include "adx.h"
-#include "KpiPartialFile.h"
 
 class KpiADXDecoder : public KbKpiDecoderImpl
 {
@@ -23,12 +22,12 @@ public:
     DWORD  WINAPI UpdateConfig(void* pvReserved) override { return 0; }
 
 private:
-    IKpiFile* kpi_file_org_{ nullptr };
-    IKpiFile* kpi_file_{ nullptr };
-    ADXheader adx_header_{};
-    KPI_MEDIAINFO mediainfo_{};
+    enum class SourceType
+    {
+        SOURCE_ADX,     // 1 ADX stream
+        SOURCE_AFS      // archive of ADX, 1 song per member
+    };
 
-    int16_t adx_coeff_[2]{ 0, 0 };                // ADX filter coefficients
     static constexpr int16_t ADX_TYPE2_COEFF[4][2] =
     {
         {0x0000, 0x0000},
@@ -37,55 +36,63 @@ private:
         {0x1880, static_cast<int16_t>(0xf240u)}
     };
 
+    // 1 ADX stream.  a song is a sequence of segments
+    struct Segment
+    {
+        IKpiFile* file{ nullptr };          // owns a reference
+        ADXheader header{};
+        int16_t coeff[2]{ 0, 0 };           // ADX filter coefficients
+        int samples_per_block{ 0 };         // # of samples stored in an ADX block, for typical 18 bytes block, this is 32
+        UINT64 data_offset{ 0 };            // offset of the first block in file
+        UINT64 start_sample{ 0 };           // position of the first sample in the song
+        UINT64 samples{ 0 };
+    };
+
     struct ADXContext
     {
         int16_t s[2];
     };
-    std::vector<ADXContext> adx_ctx_;       // ADX history samples per channel, size = # of channels
-    struct ADXblockSamples
-    {
-        std::vector<int16_t> s;             // size = samples_per_block_
-    };
-    std::vector<ADXblockSamples> decoded_block_;
-                                            // receives PCM from decodeBlock(), size = # of channels
 
-    std::vector<BYTE> source_buffer_;       // holds ADX blocks from ADX file, size = (ADX block size) * (# of channels)
-    std::vector<BYTE> decoded_buffer_;      // holds PCMs from decodeBuffer(), size = sizeof(int16_t) * (ADX block size) * (# of channels)
-
-    bool loop_enabled_{ false };
-    int samples_per_block_{ 0 };            // # of samples stored in an ADX block, for typical 18 bytes block, this is 32
-    uint32_t samples_decoded_{ 0 };         // number of totally decoded samples, reset when seek()
-    uint32_t loop_start_sample_{ 0 };       // they're stored in ADX header as uint32_t, so 32bit is enough
-    uint32_t loop_end_sample_{ 0 };
-
-    uint32_t samples_to_skip_{ 0 };         // # of samples, to skip samples from the beginning of decoded_buffer_
-    uint32_t samples_buffered_{ 0 };        // # of samples stored in loop_buffer_
-    std::vector<BYTE> loop_buffer_;         // holds two decoded_buffer_, to connect PCMs at loop
-
-    // AFS support
-    AFSheader afs_header_{};
+    IKpiFile* kpi_file_{ nullptr };         // file passed to Open
+    SourceType source_type_{ SourceType::SOURCE_ADX };
     std::vector<AFSitem> afs_items_;
+    KPI_MEDIAINFO mediainfo_{};
 
-    enum class SourceType
+    // the selected song
+    std::vector<Segment> segments_;
+    int channels_{ 0 };
+    int block_size_{ 0 };
+    UINT64 total_samples_{ 0 };
+    bool loop_enabled_{ false };
+    UINT64 loop_start_sample_{ 0 };
+    UINT64 loop_end_sample_{ 0 };
+
+    // playback state
+    struct PlayState
     {
-        SOURCE_ADX,
-        SOURCE_AFS
+        size_t segment{ 0 };
+        UINT64 next_block{ 0 };             // index of the next block to decode in the segment
+        UINT64 position{ 0 };               // position in the song of the next sample to render
+        std::vector<ADXContext> ctx;        // ADX history samples per channel, size = # of channels
+        std::vector<int16_t> decoded;       // interleaved PCM of a block, size = (samples per block) * (# of channels)
+        UINT32 decoded_read{ 0 };           // # of samples in decoded already rendered
+        UINT32 decoded_count{ 0 };          // # of samples in decoded
     };
-    SourceType source_type{ SourceType::SOURCE_ADX };
+    PlayState state_;
+    std::vector<BYTE> source_buffer_;       // holds ADX blocks of all channels, size = (ADX block size) * (# of channels)
 
     void close();
-    void reset();
-    UINT64 seekToBlock(INT64 block_index) const;
-    UINT64 seekToExactSample(UINT64 qwPosSample);
-
-    int16_t predictor(const int16_t coeffs[2], int d, int16_t scale, int16_t s[2]) const;
-    void decodeBlock(BYTE* pSource, int16_t* pDest, ADXContext& context) const;
-    DWORD decodeBuffer(BYTE* pBuffer, DWORD dwSize);
-
-    DWORD isThisADX(IKpiFile* pFile);
-    DWORD isThisAFS(IKpiFile* pFile);
-
-    IKpiFile* prepareAFSMember(DWORD dwNumber);
-    void extract_tags(IKpiTagInfo* pTagInfo) const;
+    void clearSong();
+    bool loadSong(IKpiFile* pSong);
+    bool addSegment(IKpiFile* pFile);
     void fillMediaInfo(DWORD dwNumber);
+    void extract_tags(IKpiTagInfo* pTagInfo) const;
+
+    void positionAt(UINT64 qwPosSample);
+    void enterSegment(size_t index, UINT64 sample_in_segment);
+    bool decodeNextBlock();
+    void decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDest, ADXContext& context) const;
+
+    static bool readADXHeader(IKpiFile* pFile, ADXheader& header);
+    DWORD readAFS(IKpiFile* pFile);
 };

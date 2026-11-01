@@ -1,6 +1,8 @@
 ﻿#include "stdafx.h"
 #include "KpiADXDecoder.h"
+#include "KpiPartialFile.h"
 #include "bitstream.h"
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <limits>
@@ -25,135 +27,226 @@ namespace
         const int16_t i = *reinterpret_cast<int16_t*>(p);
         return ntohs(i);
     }
+
+    int16_t predictor(const int16_t coeffs[2], int d, int scale, int16_t s[2])
+    {
+        const int predict = coeffs[0] * s[0] + coeffs[1] * s[1];
+        const int s0 = d * scale + (predict >> 12);
+        const auto r = clip<int16_t, int, int16_t>(s0);
+        s[1] = s[0];  s[0] = r;
+        return r;
+    }
 }
 
 
-DWORD KpiADXDecoder::isThisADX(IKpiFile* pFile)
+// pFile の先頭が ADX ならヘッダを読んで true を返す
+bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, ADXheader& header)
 {
     uint8_t signature[6];
 
     pFile->Seek(0, FILE_BEGIN);
-    if (pFile->Read(&adx_header_, sizeof adx_header_) < sizeof adx_header_)
+    if (pFile->Read(&header, sizeof header) < sizeof header)
     {
         ::OutputDebugStringW(L"isADX: cannot read whole common\n");
-        return 0;
+        return false;
     }
+    header.prepare();
 
-    adx_header_.prepare();
-
-    if (adx_header_.common.sig_8000 != ADX_SIGNATURE)
+    if (header.common.sig_8000 != ADX_SIGNATURE)
     {
         ::OutputDebugStringW(L"isADX: cannot read leading 0x8000\n");
-        return 0;
+        return false;
     }
 
-    pFile->Seek(static_cast<INT64>(adx_header_.common.copyright_offset) - 2, FILE_BEGIN);
+    pFile->Seek(static_cast<INT64>(header.common.copyright_offset) - 2, FILE_BEGIN);
     if (pFile->Read(signature, 6) != 6)
     {
         ::OutputDebugStringW(L"isADX: cannot read at signature offset\n");
-        return 0;
+        return false;
     }
 
     if (memcmp(signature, ADX_COPYRIGHT_SIGNATURE, 6) != 0)
     {
         ::OutputDebugStringW(L"isADX: Signature is not (c)CRI\n");
-        return 0;
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
-DWORD KpiADXDecoder::isThisAFS(IKpiFile* pFile)
+DWORD KpiADXDecoder::readAFS(IKpiFile* pFile)
 {
+    AFSheader afs_header{};
+
     pFile->Seek(0, FILE_BEGIN);
-    if (pFile->Read(&afs_header_, sizeof afs_header_) < sizeof afs_header_)
+    if (pFile->Read(&afs_header, sizeof afs_header) < sizeof afs_header)
     {
         ::OutputDebugStringW(L"isAFS: cannot read afs header\n");
         return 0;
     }
 
-    if (memcmp(afs_header_.signature, AFS_SIGNATURE, 4) != 0)
+    if (memcmp(afs_header.signature, AFS_SIGNATURE, 4) != 0)
     {
         ::OutputDebugStringW(L"isAFS: signature is not AFS\\0\n");
         return 0;
     }
 
-    afs_items_.resize(afs_header_.num_of_files);
+    afs_items_.resize(afs_header.num_of_files);
 
-    const auto bytes_to_read = sizeof(AFSitem) * afs_header_.num_of_files;
+    const auto bytes_to_read = sizeof(AFSitem) * afs_header.num_of_files;
     if (pFile->Read(afs_items_.data(), static_cast<DWORD>(bytes_to_read)) < bytes_to_read)
     {
         ::OutputDebugStringW(L"isAFS: file is small to hold items\n");
         return 0;
     }
 
-    return afs_header_.num_of_files;
+    return afs_header.num_of_files;
 }
 
 
 DWORD KpiADXDecoder::Open(const KPI_MEDIAINFO* cpRequest, IKpiFile* pFile)
 {
-    pFile->AddRef();
-    this->kpi_file_org_ = pFile;
-
     kpi_InitMediaInfo(&mediainfo_);
 
+    ADXheader header{};
     DWORD dwSongs;
-    if ((dwSongs = isThisADX(kpi_file_org_)) > 0)
+    if (readADXHeader(pFile, header))
     {
-        mediainfo_.dwCount = mediainfo_.dwNumber = dwSongs;
-        source_type = SourceType::SOURCE_ADX;
-        this->kpi_file_ = this->kpi_file_org_;
-        this->kpi_file_->AddRef();
+        dwSongs = 1;
+        source_type_ = SourceType::SOURCE_ADX;
     }
-    else if ((dwSongs = isThisAFS(kpi_file_org_)) > 0)
+    else if ((dwSongs = readAFS(pFile)) > 0)
     {
-        mediainfo_.dwCount = dwSongs;
-        source_type = SourceType::SOURCE_AFS;
+        source_type_ = SourceType::SOURCE_AFS;
     }
     else
     {
-        pFile->Release();
-        this->kpi_file_org_ = nullptr;
         return 0;
     }
 
-    return mediainfo_.dwCount;
-}
-
-void KpiADXDecoder::reset()
-{
-    for (int ch = 0; ch < adx_header_.common.channel_count; ch++)
-    {
-        memset(adx_ctx_[ch].s, 0, sizeof adx_ctx_[ch].s);
-        decoded_block_[ch].s.resize(samples_per_block_);
-        for (int i = 0; i < samples_per_block_; i++)
-            memset(decoded_block_[ch].s.data(), 0, sizeof(int16_t) * decoded_block_[ch].s.size());
-    }
-    memset(loop_buffer_.data(), 0, loop_buffer_.size());
-    samples_to_skip_ = 0;
-    samples_decoded_ = 0;
-    kpi_file_->Seek(static_cast<INT64>(adx_header_.common.copyright_offset) + 4, FILE_BEGIN);
+    pFile->AddRef();
+    kpi_file_ = pFile;
+    mediainfo_.dwCount = dwSongs;
+    return dwSongs;
 }
 
 void KpiADXDecoder::close()
 {
+    clearSong();
     if (kpi_file_ != nullptr)
     {
         kpi_file_->Release();
         kpi_file_ = nullptr;
     }
-    if (kpi_file_org_ != nullptr)
-    {
-        kpi_file_org_->Release();
-        kpi_file_org_ = nullptr;
-    }
 }
 
-IKpiFile* KpiADXDecoder::prepareAFSMember(DWORD dwNumber)
+void KpiADXDecoder::clearSong()
 {
-    return new KpiPartialFile(kpi_file_org_, afs_items_[dwNumber - 1].offset,
-        afs_items_[dwNumber - 1].offset + afs_items_[dwNumber - 1].length);
+    for (auto& seg : segments_)
+    {
+        if (seg.file != nullptr)
+            seg.file->Release();
+    }
+    segments_.clear();
+    total_samples_ = 0;
+    loop_enabled_ = false;
+    loop_start_sample_ = loop_end_sample_ = 0;
+    state_ = PlayState{};
+}
+
+// pFile の ADX を曲の末尾にセグメントとして加える
+bool KpiADXDecoder::addSegment(IKpiFile* pFile)
+{
+    Segment seg;
+    if (!readADXHeader(pFile, seg.header))
+        return false;
+
+    const auto& c = seg.header.common;
+    switch (c.encoding_type)
+    {
+    case ADXEncodingType::ADX_FIXED_COEF:
+    case ADXEncodingType::ADX_LINEAR_SCALE:
+    case ADXEncodingType::ADX_EXP_SCALE:
+        // supported
+        break;
+    case ADXEncodingType::ADX_AHX_10:
+    case ADXEncodingType::ADX_AHX_11:
+    default:
+        ::OutputDebugStringW(L"select: unsupported encoding type\n");
+        return false;
+    }
+
+    channels_ = c.channel_count;
+    block_size_ = c.block_size;
+
+    {
+        const double a = std::numbers::sqrt2 - std::cos(
+            2.0 * std::numbers::pi * (static_cast<double>(c.highpass_frequency) / static_cast<double>(c.sample_rate)));
+        const double b = std::numbers::sqrt2 - 1.0;
+        const double d = (a - std::sqrt((a + b) * (a - b))) / b; //(a+b)*(a-b) = a*a-b*b, however the simpler formula loses accuracy in floating point
+
+        seg.coeff[0] = static_cast<int16_t>((d * 2.0) * 4096.0);
+        seg.coeff[1] = static_cast<int16_t>(-(d * d) * 4096.0);
+    }
+
+    seg.samples_per_block = (c.block_size - sizeof(uint16_t)) * 8 / c.sample_bitdepth;
+    seg.data_offset = static_cast<UINT64>(c.copyright_offset) + 4;
+    seg.start_sample = total_samples_;
+    seg.samples = c.total_samples;
+
+    pFile->AddRef();
+    seg.file = pFile;
+    segments_.push_back(seg);
+    total_samples_ += seg.samples;
+    return true;
+}
+
+bool KpiADXDecoder::loadSong(IKpiFile* pSong)
+{
+    clearSong();
+
+    if (!addSegment(pSong))
+        return false;
+
+    // ループ情報は ADX のヘッダにある
+    const auto& seg = segments_.front();
+    const auto& h = seg.header;
+    uint32_t loop_start = 0, loop_end = 0;
+    switch (h.common.version)
+    {
+    case ADXVersion::ADX_VERSION_3:
+        loop_enabled_ = (h.common.copyright_offset + 4) > ADX_V3_HEADER_SIZE
+            && (h.v3.loop_enabled_1 != 0 || h.v3.loop_enabled_2 != 0);
+        loop_start = h.v3.loop_begin_sample_index;
+        loop_end = h.v3.loop_end_sample_index;
+        break;
+    case ADXVersion::ADX_VERSION_4:
+        loop_enabled_ = (h.common.copyright_offset + 4) > ADX_V4_HEADER_SIZE
+            && h.v4.loop_enabled != 0;
+        loop_start = h.v4.loop_begin_sample_index;
+        loop_end = h.v4.loop_end_sample_index;
+        break;
+    default:
+        loop_enabled_ = false;
+        break;
+    }
+    loop_start_sample_ = loop_start;
+    loop_end_sample_ = loop_end;
+
+    if (loop_enabled_ && (loop_end_sample_ > total_samples_ || loop_start_sample_ >= loop_end_sample_))
+    {
+        ::OutputDebugStringW(L"select: invalid loop points\n");
+        loop_enabled_ = false;
+    }
+    if (!loop_enabled_)
+        loop_start_sample_ = loop_end_sample_ = 0;
+
+    const size_t samples_per_block = std::max_element(segments_.begin(), segments_.end(),
+        [](const Segment& a, const Segment& b) { return a.samples_per_block < b.samples_per_block; })->samples_per_block;
+    source_buffer_.resize(static_cast<size_t>(block_size_) * channels_);
+    state_.decoded.assign(samples_per_block * channels_, 0);
+    state_.ctx.assign(channels_, ADXContext{});
+    return true;
 }
 
 void KpiADXDecoder::extract_tags(IKpiTagInfo* pTagInfo) const
@@ -165,11 +258,12 @@ void KpiADXDecoder::extract_tags(IKpiTagInfo* pTagInfo) const
         pTagInfo->wSetValueW(name, -1, buf.get(), -1);
     };
 
-    const auto bps = (adx_header_.common.sample_bitdepth * adx_header_.common.sample_rate);
+    const auto& common = segments_.front().header.common;
+    const auto bps = (common.sample_bitdepth * common.sample_rate);
     wsprintf(buf.get(), L"%d.%03dkbps", bps / 1000, bps % 1000);
     pTagInfo->wSetValueW(SZ_KMP_NAME_BITRATE_W, -1, buf.get(), -1);
 
-    switch(adx_header_.common.encoding_type)
+    switch(common.encoding_type)
     {
     case ADXEncodingType::ADX_EXP_SCALE:
         pTagInfo->wSetValueW(L"ADX_EncodingType", -1, L"4 - Exponent Scale", -1);
@@ -181,21 +275,21 @@ void KpiADXDecoder::extract_tags(IKpiTagInfo* pTagInfo) const
         pTagInfo->wSetValueW(L"ADX_EncodingType", -1, L"2 - Fixed Coefficient", -1);
         break;
     default:
-        wsprintf(buf.get(), L"%d (unsupported)", adx_header_.common.encoding_type);
+        wsprintf(buf.get(), L"%d (unsupported)", common.encoding_type);
         pTagInfo->wSetValueW(L"ADX_EncodingType", -1, buf.get(), -1);
     }
-    set_tag(L"ADX_Version", L"%u", adx_header_.common.version);
-    set_tag(L"ADX_BlockSize", L"%u", adx_header_.common.block_size);
-    set_tag(L"ADX_SampleBitDepth", L"%u", adx_header_.common.sample_bitdepth);
-    set_tag(L"ADX_HighPassFrequency", L"%hu", adx_header_.common.highpass_frequency);
+    set_tag(L"ADX_Version", L"%u", common.version);
+    set_tag(L"ADX_BlockSize", L"%u", common.block_size);
+    set_tag(L"ADX_SampleBitDepth", L"%u", common.sample_bitdepth);
+    set_tag(L"ADX_HighPassFrequency", L"%hu", common.highpass_frequency);
 
-    set_tag(L"ADX_TotalSamples", L"%u", adx_header_.common.total_samples);
+    set_tag(L"ADX_TotalSamples", L"%u", static_cast<uint32_t>(total_samples_));
 
     pTagInfo->wSetValueW(L"ADX_IsLooped", -1, loop_enabled_ ? L"True" : L"False", -1);
-    set_tag(L"ADX_LoopStartSample", L"%u", loop_start_sample_);
-    set_tag(L"ADX_LoopEndSample", L"%u", loop_end_sample_);
+    set_tag(L"ADX_LoopStartSample", L"%u", static_cast<uint32_t>(loop_start_sample_));
+    set_tag(L"ADX_LoopEndSample", L"%u", static_cast<uint32_t>(loop_end_sample_));
 
-    if (adx_header_.common.flags == 0x08)
+    if (common.flags == 0x08)
     {
         pTagInfo->wSetValueW(L"ADX_Flags", -1, L"Encrypted (may not play correctly)", -1);
     }
@@ -203,47 +297,26 @@ void KpiADXDecoder::extract_tags(IKpiTagInfo* pTagInfo) const
 
 void KpiADXDecoder::fillMediaInfo(DWORD dwNumber)
 {
+    const auto sample_rate = segments_.front().header.common.sample_rate;
+
     mediainfo_.dwNumber = dwNumber;
     mediainfo_.dwFormatType = KPI_MEDIAINFO::FORMAT_PCM;
-    mediainfo_.dwSampleRate = adx_header_.common.sample_rate;
+    mediainfo_.dwSampleRate = sample_rate;
     mediainfo_.nBitsPerSample = 16;
-    mediainfo_.dwChannels = adx_header_.common.channel_count;
+    mediainfo_.dwChannels = channels_;
     mediainfo_.qwFadeOut = -1;
     mediainfo_.dwSeekableFlags = KPI_MEDIAINFO::SEEK_FLAGS_SAMPLE;
-
-    samples_per_block_ = (adx_header_.common.block_size - sizeof(uint16_t)) * 8 / adx_header_.common.sample_bitdepth;
-
-    mediainfo_.dwUnitSample = samples_per_block_;
-
-    switch (adx_header_.common.version)
-    {
-    case ADXVersion::ADX_VERSION_3:
-        loop_enabled_ = (adx_header_.common.copyright_offset + 4) > ADX_V3_HEADER_SIZE
-            && (adx_header_.v3.loop_enabled_1 != 0 || adx_header_.v3.loop_enabled_2 != 0);
-        loop_start_sample_ = adx_header_.v3.loop_begin_sample_index;
-        loop_end_sample_ = adx_header_.v3.loop_end_sample_index;
-        break;
-    case ADXVersion::ADX_VERSION_4:
-        loop_enabled_ = (adx_header_.common.copyright_offset + 4) > ADX_V4_HEADER_SIZE
-            && adx_header_.v4.loop_enabled != 0;
-        loop_start_sample_ = adx_header_.v4.loop_begin_sample_index;
-        loop_end_sample_ = adx_header_.v4.loop_end_sample_index;
-        break;
-    case ADXVersion::ADX_VERSION_5:
-        loop_enabled_ = false;
-        break;
-    }
+    mediainfo_.dwUnitSample = 0;
 
     if (loop_enabled_)
     {
-        mediainfo_.qwLength = kpi_SampleTo100ns(loop_end_sample_, adx_header_.common.sample_rate);
-        mediainfo_.qwLoop = kpi_SampleTo100ns(static_cast<UINT64>(loop_end_sample_) - loop_start_sample_, adx_header_.common.sample_rate);
+        mediainfo_.qwLength = kpi_SampleTo100ns(loop_end_sample_, sample_rate);
+        mediainfo_.qwLoop = kpi_SampleTo100ns(loop_end_sample_ - loop_start_sample_, sample_rate);
     }
     else
     {
-        mediainfo_.qwLength = kpi_SampleTo100ns(adx_header_.common.total_samples, adx_header_.common.sample_rate);
+        mediainfo_.qwLength = kpi_SampleTo100ns(total_samples_, sample_rate);
         mediainfo_.qwLoop = 0;
-        loop_start_sample_ = loop_end_sample_ = 0;
     }
 }
 
@@ -255,52 +328,27 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
     if (dwNumber > mediainfo_.dwCount)
         return 0;
 
-    if (source_type == SourceType::SOURCE_AFS)
+    IKpiFile* song;
+    if (source_type_ == SourceType::SOURCE_AFS)
     {
-        if (kpi_file_ != nullptr)
-            kpi_file_->Release();
-        this->kpi_file_ = prepareAFSMember(dwNumber);
+        const auto& item = afs_items_[dwNumber - 1];
+        song = new KpiPartialFile(kpi_file_, item.offset, static_cast<UINT64>(item.offset) + item.length);
     }
-
-    if(isThisADX(kpi_file_) == 0)
-        return 0;
-
-    switch(adx_header_.common.encoding_type)
+    else
     {
-    case ADXEncodingType::ADX_FIXED_COEF:
-    case ADXEncodingType::ADX_LINEAR_SCALE:
-    case ADXEncodingType::ADX_EXP_SCALE:
-        // supported
-        break;
-    case ADXEncodingType::ADX_AHX_10:
-    case ADXEncodingType::ADX_AHX_11:
-    default:
-        ::OutputDebugStringW(L"select: unsupported encoding type\n");
-        return 0;
+        song = kpi_file_;
+        song->AddRef();
     }
-
+    const bool ok = loadSong(song);
+    song->Release();     // セグメントが参照を持っている
+    if (!ok)
     {
-        const double a = std::numbers::sqrt2 - std::cos(
-            2.0 * std::numbers::pi * (static_cast<double>(adx_header_.common.highpass_frequency) / static_cast<double>(adx_header_.common.sample_rate)));
-        const double b = std::numbers::sqrt2 - 1.0;
-        const double c = (a - std::sqrt((a + b) * (a - b))) / b; //(a+b)*(a-b) = a*a-b*b, however the simpler formula loses accuracy in floating point
-
-        adx_coeff_[0] = static_cast<int16_t>((c * 2.0) * 4096.0);
-        adx_coeff_[1] = static_cast<int16_t>(-(c * c) * 4096.0);
+        clearSong();
+        return 0;
     }
 
     fillMediaInfo(dwNumber);
-
-    source_buffer_.resize(static_cast<size_t>(adx_header_.common.block_size) * adx_header_.common.channel_count);
-    decoded_buffer_.resize(static_cast<size_t>(samples_per_block_) * adx_header_.common.channel_count * 2 * 1);
-    loop_buffer_.resize(decoded_buffer_.size() * 2);
-
-    adx_ctx_.resize(adx_header_.common.channel_count);
-    decoded_block_.resize(adx_header_.common.channel_count);
-
-    samples_buffered_ = 0;
-
-    reset();
+    positionAt(0);
 
     if (ppMediaInfo != nullptr)
         *ppMediaInfo = &mediainfo_;
@@ -314,171 +362,170 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
 
 UINT64 KpiADXDecoder::Seek(UINT64 qwPosSample, DWORD dwFlag)
 {
-    const UINT64 qwPosSample_save = qwPosSample;
+    if (segments_.empty())
+        return 0;
 
-    reset();
-    samples_buffered_ = 0;
-
-    if (!loop_enabled_ && qwPosSample > adx_header_.common.total_samples)
-        return KPI_FILE_EOF;
-
-    if (loop_enabled_ && qwPosSample > loop_end_sample_)
+    if (loop_enabled_)
     {
-        const UINT64 loop_length = static_cast<UINT64>(loop_end_sample_) - loop_start_sample_;
-        while (qwPosSample > loop_end_sample_)
+        if (qwPosSample >= loop_end_sample_)
         {
-            qwPosSample -= loop_length;
+            const UINT64 loop_length = loop_end_sample_ - loop_start_sample_;
+            positionAt(loop_start_sample_ + (qwPosSample - loop_start_sample_) % loop_length);
         }
+        else
+        {
+            positionAt(qwPosSample);
+        }
+        return qwPosSample;
     }
 
-    seekToExactSample(qwPosSample);
-    return qwPosSample_save;
-}
-
-UINT64 KpiADXDecoder::seekToBlock(INT64 block_index) const
-{
-    int64_t seek_to = static_cast<int64_t>(adx_header_.common.copyright_offset) + 4;
-    seek_to += block_index * static_cast<int64_t>(adx_header_.common.block_size) * static_cast<int64_t>(adx_header_.common.channel_count);
-    return kpi_file_->Seek(seek_to, FILE_BEGIN);
-}
-
-UINT64 KpiADXDecoder::seekToExactSample(UINT64 qwPosSample)
-{
-    const uint64_t block_index = qwPosSample / samples_per_block_;
-    seekToBlock(block_index);
-
-    samples_to_skip_ = qwPosSample % samples_per_block_;
-    samples_decoded_ = static_cast<uint32_t>(qwPosSample);
+    // 曲の終わりより先なら終わった位置
+    qwPosSample = std::min(qwPosSample, total_samples_);
+    positionAt(qwPosSample);
     return qwPosSample;
 }
 
-int16_t KpiADXDecoder::predictor(const int16_t coeffs[2], int d, int16_t scale, int16_t s[2]) const
+// 曲中の位置に移動する(瞬時シーク)。
+// 先頭以外では ADX の履歴が分からないので 0 から始める
+void KpiADXDecoder::positionAt(UINT64 qwPosSample)
 {
-    const int predict = coeffs[0] * s[0] + coeffs[1] * s[1];
-    const int s0 = d * scale + (predict >> 12);
-    const auto r = clip<int16_t, int, int16_t>(s0);
-    s[1] = s[0];  s[0] = r;
-    return r;
+    size_t index = segments_.size() - 1;
+    for (size_t i = 0; i < segments_.size(); i++)
+    {
+        if (qwPosSample < segments_[i].start_sample + segments_[i].samples)
+        {
+            index = i;
+            break;
+        }
+    }
+    const auto& seg = segments_[index];
+    enterSegment(index, std::min(qwPosSample - std::min(qwPosSample, seg.start_sample), seg.samples));
 }
 
-// 1w + 32h 分デコードする
-// https://github.com/Thealexbarney/VGAudio/tree/master/src/VGAudio/Codecs/CriAdx
-void KpiADXDecoder::decodeBlock(BYTE* pSource, int16_t* pDest, ADXContext& context) const
+// セグメント内の位置に移動する
+void KpiADXDecoder::enterSegment(size_t index, UINT64 sample_in_segment)
 {
+    const auto& seg = segments_[index];
+    state_.segment = index;
+    state_.position = seg.start_sample + sample_in_segment;
+    state_.decoded_read = state_.decoded_count = 0;
+    std::fill(state_.ctx.begin(), state_.ctx.end(), ADXContext{});
+
+    state_.next_block = sample_in_segment / seg.samples_per_block;
+    seg.file->Seek(static_cast<INT64>(seg.data_offset + state_.next_block * block_size_ * channels_), FILE_BEGIN);
+
+    const auto samples_to_skip = static_cast<UINT32>(sample_in_segment % seg.samples_per_block);
+    if (samples_to_skip > 0)
+    {
+        decodeNextBlock();
+        state_.decoded_read = samples_to_skip;
+    }
+}
+
+// 現在のセグメントの次のブロックを state_.decoded にデコードする
+// 読めなかった場合は無音で埋めて false を返す
+bool KpiADXDecoder::decodeNextBlock()
+{
+    const auto& seg = segments_[state_.segment];
+    state_.next_block++;
+    state_.decoded_read = 0;
+    state_.decoded_count = seg.samples_per_block;
+
+    const DWORD bytes_to_read = static_cast<DWORD>(source_buffer_.size());
+    if (seg.file->Read(source_buffer_.data(), bytes_to_read) < bytes_to_read)
+    {
+        std::fill(state_.decoded.begin(), state_.decoded.end(), static_cast<int16_t>(0));
+        return false;
+    }
+
+    // ADX では各チャンネルのサンプルは 32 samples ごとに
+    // LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR ...
+    // と並んでいるので，これを WaveAudio の LRLRLRLR ... 形式に直す
+    for (int ch = 0; ch < channels_; ch++)
+        decodeBlock(seg, source_buffer_.data() + static_cast<size_t>(ch) * block_size_, state_.decoded.data() + ch, state_.ctx[ch]);
+    return true;
+}
+
+// 1 チャンネル分の 1 ブロックをデコードして pDest にチャンネル数おきに書き込む
+// https://github.com/Thealexbarney/VGAudio/tree/master/src/VGAudio/Codecs/CriAdx
+void KpiADXDecoder::decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDest, ADXContext& context) const
+{
+    const auto& common = seg.header.common;
     int r_scale = get_be<int16_t>(pSource);
     int scale = r_scale & 0x1fff;
 
-    const int16_t* coeff_p = adx_coeff_;
-    if(adx_header_.common.encoding_type == ADXEncodingType::ADX_FIXED_COEF)
+    const int16_t* coeff_p = seg.coeff;
+    if(common.encoding_type == ADXEncodingType::ADX_FIXED_COEF)
     {
         const int coeff_index = (r_scale >> 13) & 0x03;
         coeff_p = ADX_TYPE2_COEFF[coeff_index];
     }
-    if(adx_header_.common.encoding_type == ADXEncodingType::ADX_EXP_SCALE)
+    if(common.encoding_type == ADXEncodingType::ADX_EXP_SCALE)
         scale = 1 << (12 - scale);
 
     pSource += 2;
-    bitstream b(pSource, adx_header_.common.block_size - sizeof(int16_t));
-    const int sign_decr = (1 << adx_header_.common.sample_bitdepth);
+    bitstream b(pSource, common.block_size - sizeof(int16_t));
+    const int sign_decr = (1 << common.sample_bitdepth);
     const int sign_mask = sign_decr >> 1;
 
-    for (int i = 0; i < samples_per_block_; i++)
+    for (int i = 0; i < seg.samples_per_block; i++)
     {
-        int d = b.get(adx_header_.common.sample_bitdepth);
+        int d = b.get(common.sample_bitdepth);
         if (d & sign_mask) d -= sign_decr;
-        *pDest++ = predictor(coeff_p, d, scale, context.s);
+        *pDest = predictor(coeff_p, d, scale, context.s);
+        pDest += channels_;
     }
-}
-
-// dwSize (% dwUnitRender == 0) の分だけデコードする
-DWORD KpiADXDecoder::decodeBuffer(BYTE* pBuffer, DWORD dwSizeSamples)
-{
-    DWORD samples_decoded = 0;
-    const int channels = adx_header_.common.channel_count;
-
-    while (samples_decoded < dwSizeSamples)
-    {
-        const DWORD bytes_read = kpi_file_->Read(source_buffer_.data(), static_cast<DWORD>(source_buffer_.size()));
-        if (bytes_read < adx_header_.common.block_size * static_cast<unsigned>(channels)) break;	// 1ブロックも読めなければそこで中断
-        BYTE* p_source = source_buffer_.data();
-        BYTE* p_src_end = p_source + bytes_read;
-        while (p_source < p_src_end && samples_decoded < dwSizeSamples)
-        {
-            for (int ch = 0; ch < channels; ch++)
-            {
-                decodeBlock(p_source, decoded_block_[ch].s.data(), adx_ctx_[ch]);
-                p_source += adx_header_.common.block_size;
-            }
-
-            // ADX では各チャンネルのサンプルは 32 samples ごとに
-            // LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR ...
-            // と並んでいるので，これを WaveAudio の LRLRLRLR ... 形式に直す
-            if (pBuffer != nullptr)
-            {
-                auto* p_output = reinterpret_cast<int16_t*>(pBuffer);
-                for (int i = 0; i < samples_per_block_; i++)
-                {
-                    for (int ch = 0; ch < channels; ch++)
-                        *p_output++ = decoded_block_[ch].s[i];
-                }
-                pBuffer += samples_per_block_ * channels * 2;
-            }
-
-            samples_decoded += samples_per_block_;
-        }
-        if (bytes_read < source_buffer_.size()) break;
-    }
-    return samples_decoded;
 }
 
 DWORD KpiADXDecoder::Render(BYTE* pBuffer, DWORD dwSizeSample)
 {
-    if (!loop_enabled_)
-        return decodeBuffer(pBuffer, dwSizeSample);
+    if (segments_.empty())
+        return 0;
 
-    const int channels = adx_header_.common.channel_count;
-    const int bytes_per_sample = 2 * channels;
+    auto* p_output = reinterpret_cast<int16_t*>(pBuffer);
     DWORD dwSamplesRendered = 0;
 
-    while (dwSizeSample > 0)
+    while (dwSamplesRendered < dwSizeSample)
     {
-        if (samples_buffered_ > 0)
+        const UINT64 end = loop_enabled_ ? loop_end_sample_ : total_samples_;
+        if (state_.position >= end)
         {
-            const auto samplesToCopy = (samples_buffered_ > dwSizeSample) ? dwSizeSample : samples_buffered_;
-
-            memcpy(pBuffer, loop_buffer_.data(), static_cast<size_t>(samplesToCopy) * bytes_per_sample);
-            dwSizeSample -= samplesToCopy;
-            pBuffer += samplesToCopy * bytes_per_sample;
-            dwSamplesRendered += samplesToCopy;
-            memmove(loop_buffer_.data(), loop_buffer_.data() + samplesToCopy * bytes_per_sample, 
-                loop_buffer_.size() - static_cast<size_t>(samplesToCopy) * bytes_per_sample);
-            samples_buffered_ -= samplesToCopy;
+            if (!loop_enabled_)
+                break;
+            positionAt(loop_start_sample_);
+            continue;
         }
-        if (dwSizeSample == 0) break;
 
-        const DWORD dwDecodedSamples = decodeBuffer(decoded_buffer_.data(), samples_per_block_);
-        memcpy(loop_buffer_.data() + (samples_buffered_ * bytes_per_sample), decoded_buffer_.data() + (samples_to_skip_ * bytes_per_sample),
-            (static_cast<size_t>(dwDecodedSamples) - samples_to_skip_) * bytes_per_sample);
-
-        samples_decoded_ += dwDecodedSamples - samples_to_skip_;
-        samples_buffered_ += dwDecodedSamples - samples_to_skip_;
-        samples_to_skip_ = 0;
-
-        if (loop_enabled_ && samples_decoded_ >= loop_end_sample_)
+        const auto& seg = segments_[state_.segment];
+        const UINT64 segment_end = seg.start_sample + seg.samples;
+        if (state_.position >= segment_end)
         {
-            const auto samples_to_cut = samples_decoded_ - loop_end_sample_;
-            samples_decoded_ -= samples_to_cut;
-            samples_buffered_ -= samples_to_cut;
+            // position < end <= total_samples_ なので次のセグメントがある
+            enterSegment(state_.segment + 1, 0);
+            continue;
+        }
 
-            reset();
-            seekToExactSample(loop_start_sample_);
-        }
-        if(!loop_enabled_ && samples_decoded_ >= adx_header_.common.total_samples)
+        if (state_.decoded_read >= state_.decoded_count)
         {
-            const auto samples_to_cut = samples_decoded_ - adx_header_.common.total_samples;
-            samples_decoded_ -= samples_to_cut;
-            samples_buffered_ -= samples_to_cut;
+            // データが途中で切れている場合、ループしない曲の最後のセグメントならそこで終わる
+            // それ以外は曲の長さを保つため無音で埋める
+            if (!decodeNextBlock() && !loop_enabled_ && state_.segment + 1 == segments_.size())
+                break;
         }
+
+        const UINT64 samples_to_copy = std::min({
+            static_cast<UINT64>(dwSizeSample - dwSamplesRendered),
+            static_cast<UINT64>(state_.decoded_count - state_.decoded_read),
+            segment_end - state_.position,
+            end - state_.position });
+
+        memcpy(p_output + static_cast<size_t>(dwSamplesRendered) * channels_,
+            state_.decoded.data() + static_cast<size_t>(state_.decoded_read) * channels_,
+            static_cast<size_t>(samples_to_copy) * channels_ * sizeof(int16_t));
+
+        dwSamplesRendered += static_cast<DWORD>(samples_to_copy);
+        state_.decoded_read += static_cast<UINT32>(samples_to_copy);
+        state_.position += samples_to_copy;
     }
     return dwSamplesRendered;
 }
