@@ -64,8 +64,12 @@ bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, ADXheader& header)
         return false;
     }
 
+    // "(c)CRI" is at copyright_offset - 2
     if (header.common.copyright_offset < 2)
+    {
+        ::OutputDebugStringW(L"isADX: copyright offset is too small\n");
         return false;
+    }
     pFile->Seek(static_cast<INT64>(header.common.copyright_offset) - 2, FILE_BEGIN);
     if (pFile->Read(signature, 6) != 6)
     {
@@ -79,11 +83,11 @@ bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, ADXheader& header)
         return false;
     }
 
-    const auto& c = header.common;
-    if (c.channel_count == 0 || c.sample_rate == 0
-        || c.sample_bitdepth == 0 || c.sample_bitdepth > 16
-        || c.block_size <= sizeof(uint16_t)
-        || (c.block_size - sizeof(uint16_t)) * 8 / c.sample_bitdepth == 0)
+    const auto& common = header.common;
+    if (common.channel_count == 0 || common.sample_rate == 0
+        || common.sample_bitdepth == 0 || common.sample_bitdepth > 16
+        || common.block_size <= sizeof(uint16_t)
+        || (common.block_size - sizeof(uint16_t)) * 8 / common.sample_bitdepth == 0)
     {
         ::OutputDebugStringW(L"isADX: invalid header\n");
         return false;
@@ -197,8 +201,8 @@ bool KpiADXDecoder::addSegment(IKpiFile* pFile, bool aax_loop)
     if (!readADXHeader(pFile, seg.header))
         return false;
 
-    const auto& c = seg.header.common;
-    switch (c.encoding_type)
+    const auto& common = seg.header.common;
+    switch (common.encoding_type)
     {
     case ADXEncodingType::ADX_FIXED_COEF:
     case ADXEncodingType::ADX_LINEAR_SCALE:
@@ -215,14 +219,14 @@ bool KpiADXDecoder::addSegment(IKpiFile* pFile, bool aax_loop)
     // 全セグメントで同じでなければならない
     if (segments_.empty())
     {
-        channels_ = c.channel_count;
-        block_size_ = c.block_size;
+        channels_ = common.channel_count;
+        block_size_ = common.block_size;
     }
     else
     {
         const auto& first = segments_.front().header.common;
-        if (c.channel_count != first.channel_count || c.sample_rate != first.sample_rate
-            || c.block_size != first.block_size || c.sample_bitdepth != first.sample_bitdepth)
+        if (common.channel_count != first.channel_count || common.sample_rate != first.sample_rate
+            || common.block_size != first.block_size || common.sample_bitdepth != first.sample_bitdepth)
         {
             ::OutputDebugStringW(L"select: segments have different formats\n");
             return false;
@@ -231,18 +235,18 @@ bool KpiADXDecoder::addSegment(IKpiFile* pFile, bool aax_loop)
 
     {
         const double a = std::numbers::sqrt2 - std::cos(
-            2.0 * std::numbers::pi * (static_cast<double>(c.highpass_frequency) / static_cast<double>(c.sample_rate)));
+            2.0 * std::numbers::pi * (static_cast<double>(common.highpass_frequency) / static_cast<double>(common.sample_rate)));
         const double b = std::numbers::sqrt2 - 1.0;
-        const double d = (a - std::sqrt((a + b) * (a - b))) / b; //(a+b)*(a-b) = a*a-b*b, however the simpler formula loses accuracy in floating point
+        const double c = (a - std::sqrt((a + b) * (a - b))) / b; //(a+b)*(a-b) = a*a-b*b, however the simpler formula loses accuracy in floating point
 
-        seg.coeff[0] = static_cast<int16_t>((d * 2.0) * 4096.0);
-        seg.coeff[1] = static_cast<int16_t>(-(d * d) * 4096.0);
+        seg.coeff[0] = static_cast<int16_t>((c * 2.0) * 4096.0);
+        seg.coeff[1] = static_cast<int16_t>(-(c * c) * 4096.0);
     }
 
-    seg.samples_per_block = (c.block_size - sizeof(uint16_t)) * 8 / c.sample_bitdepth;
-    seg.data_offset = static_cast<UINT64>(c.copyright_offset) + 4;
+    seg.samples_per_block = (common.block_size - sizeof(uint16_t)) * 8 / common.sample_bitdepth;
+    seg.data_offset = static_cast<uint64_t>(common.copyright_offset) + 4;
     seg.start_sample = total_samples_;
-    seg.samples = c.total_samples;
+    seg.samples = common.total_samples;
     seg.aax_loop = aax_loop;
 
     pFile->AddRef();
@@ -264,22 +268,20 @@ bool KpiADXDecoder::loadSong(IKpiFile* pSong)
             return false;
 
         // ループ情報は ADX のヘッダにある
-        const auto& seg = segments_.front();
-        const auto& h = seg.header;
         uint32_t loop_start = 0, loop_end = 0;
-        switch (h.common.version)
+        switch (header.common.version)
         {
         case ADXVersion::ADX_VERSION_3:
-            loop_enabled_ = (h.common.copyright_offset + 4) > ADX_V3_HEADER_SIZE
-                && (h.v3.loop_enabled_1 != 0 || h.v3.loop_enabled_2 != 0);
-            loop_start = h.v3.loop_begin_sample_index;
-            loop_end = h.v3.loop_end_sample_index;
+            loop_enabled_ = (header.common.copyright_offset + 4) > ADX_V3_HEADER_SIZE
+                && (header.v3.loop_enabled_1 != 0 || header.v3.loop_enabled_2 != 0);
+            loop_start = header.v3.loop_begin_sample_index;
+            loop_end = header.v3.loop_end_sample_index;
             break;
         case ADXVersion::ADX_VERSION_4:
-            loop_enabled_ = (h.common.copyright_offset + 4) > ADX_V4_HEADER_SIZE
-                && h.v4.loop_enabled != 0;
-            loop_start = h.v4.loop_begin_sample_index;
-            loop_end = h.v4.loop_end_sample_index;
+            loop_enabled_ = (header.common.copyright_offset + 4) > ADX_V4_HEADER_SIZE
+                && header.v4.loop_enabled != 0;
+            loop_start = header.v4.loop_begin_sample_index;
+            loop_end = header.v4.loop_end_sample_index;
             break;
         default:
             loop_enabled_ = false;
@@ -314,6 +316,7 @@ bool KpiADXDecoder::loadSong(IKpiFile* pSong)
     }
     else
     {
+        ::OutputDebugStringW(L"select: song is neither ADX nor AAX\n");
         return false;
     }
 
@@ -326,7 +329,7 @@ bool KpiADXDecoder::loadSong(IKpiFile* pSong)
         loop_start_sample_ = loop_end_sample_ = 0;
 
     const size_t samples_per_block = std::max_element(segments_.begin(), segments_.end(),
-        [](const Segment& a, const Segment& b) { return a.samples_per_block < b.samples_per_block; })->samples_per_block;
+        [](const Segment& lhs, const Segment& rhs) { return lhs.samples_per_block < rhs.samples_per_block; })->samples_per_block;
     source_buffer_.resize(static_cast<size_t>(block_size_) * channels_);
     state_.decoded.assign(samples_per_block * channels_, 0);
     state_.ctx.assign(channels_, ADXContext{});
@@ -460,6 +463,7 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
 
 UINT64 KpiADXDecoder::Seek(UINT64 qwPosSample, DWORD dwFlag)
 {
+    // Select() has not succeeded
     if (segments_.empty())
         return 0;
 
@@ -467,7 +471,7 @@ UINT64 KpiADXDecoder::Seek(UINT64 qwPosSample, DWORD dwFlag)
     {
         if (qwPosSample >= loop_end_sample_)
         {
-            const UINT64 loop_length = loop_end_sample_ - loop_start_sample_;
+            const uint64_t loop_length = loop_end_sample_ - loop_start_sample_;
             const UINT64 pos = loop_start_sample_ + (qwPosSample - loop_start_sample_) % loop_length;
             if (pos == loop_start_sample_ && loop_state_valid_)
                 restoreLoopState();
@@ -508,7 +512,7 @@ void KpiADXDecoder::positionAt(UINT64 qwPosSample)
 // セグメント内の位置に移動する。
 // carry_history: 前のセグメントから続けて再生する。AAX のセグメントは前のセグメントの
 // 最後の 2 サンプルを履歴として続けてエンコードされているので、それを引き継ぐ
-void KpiADXDecoder::enterSegment(size_t index, UINT64 sample_in_segment, bool carry_history)
+void KpiADXDecoder::enterSegment(size_t index, uint64_t sample_in_segment, bool carry_history)
 {
     const auto& seg = segments_[index];
     state_.segment = index;
@@ -527,7 +531,7 @@ void KpiADXDecoder::enterSegment(size_t index, UINT64 sample_in_segment, bool ca
     state_.next_block = sample_in_segment / seg.samples_per_block;
     seg.file->Seek(static_cast<INT64>(seg.data_offset + state_.next_block * block_size_ * channels_), FILE_BEGIN);
 
-    const auto samples_to_skip = static_cast<UINT32>(sample_in_segment % seg.samples_per_block);
+    const auto samples_to_skip = static_cast<uint32_t>(sample_in_segment % seg.samples_per_block);
     if (samples_to_skip > 0)
     {
         decodeNextBlock();
@@ -601,6 +605,7 @@ void KpiADXDecoder::decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDes
 
 DWORD KpiADXDecoder::Render(BYTE* pBuffer, DWORD dwSizeSample)
 {
+    // Select() has not succeeded
     if (segments_.empty())
         return 0;
     return render(reinterpret_cast<int16_t*>(pBuffer), dwSizeSample);
@@ -613,7 +618,7 @@ DWORD KpiADXDecoder::render(int16_t* pOutput, DWORD dwSizeSample)
 
     while (dwSamplesRendered < dwSizeSample)
     {
-        const UINT64 end = loop_enabled_ ? loop_end_sample_ : total_samples_;
+        const uint64_t end = loop_enabled_ ? loop_end_sample_ : total_samples_;
         if (state_.position >= end)
         {
             if (!loop_enabled_)
@@ -622,7 +627,7 @@ DWORD KpiADXDecoder::render(int16_t* pOutput, DWORD dwSizeSample)
             {
                 // シークでループ開始位置を飛ばした場合は、先頭からデコードし直して求める
                 positionAt(0);
-                render(nullptr, static_cast<DWORD>(std::min<UINT64>(loop_start_sample_, MAXDWORD)));
+                render(nullptr, static_cast<DWORD>(std::min<uint64_t>(loop_start_sample_, MAXDWORD)));
                 loop_state_ = state_;
                 loop_state_valid_ = (state_.position == loop_start_sample_);
                 if (!loop_state_valid_)
@@ -636,7 +641,7 @@ DWORD KpiADXDecoder::render(int16_t* pOutput, DWORD dwSizeSample)
         }
 
         const auto& seg = segments_[state_.segment];
-        const UINT64 segment_end = seg.start_sample + seg.samples;
+        const uint64_t segment_end = seg.start_sample + seg.samples;
         if (state_.position >= segment_end)
         {
             // position < end <= total_samples_ なので次のセグメントがある
@@ -659,10 +664,10 @@ DWORD KpiADXDecoder::render(int16_t* pOutput, DWORD dwSizeSample)
         }
 
         // ループ開始位置ではいったん止めて状態を保存する
-        const UINT64 stop = (loop_enabled_ && state_.position < loop_start_sample_) ? loop_start_sample_ : end;
-        const UINT64 samples_to_copy = std::min({
-            static_cast<UINT64>(dwSizeSample - dwSamplesRendered),
-            static_cast<UINT64>(state_.decoded_count - state_.decoded_read),
+        const uint64_t stop = (loop_enabled_ && state_.position < loop_start_sample_) ? loop_start_sample_ : end;
+        const uint64_t samples_to_copy = std::min({
+            static_cast<uint64_t>(dwSizeSample - dwSamplesRendered),
+            static_cast<uint64_t>(state_.decoded_count - state_.decoded_read),
             segment_end - state_.position,
             stop - state_.position });
 
@@ -677,14 +682,14 @@ DWORD KpiADXDecoder::render(int16_t* pOutput, DWORD dwSizeSample)
         const size_t last = static_cast<size_t>(samples_to_copy) - 1;
         for (int ch = 0; ch < channels_; ch++)
         {
-            auto& t = state_.tail[ch].s;
-            const int16_t s0 = p_src[last * channels_ + ch];
-            t[1] = (last >= 1 || state_.decoded_read >= 1) ? p_src[(static_cast<ptrdiff_t>(last) - 1) * channels_ + ch] : t[0];
-            t[0] = s0;
+            auto& tail = state_.tail[ch].s;
+            const int16_t last_sample = p_src[last * channels_ + ch];
+            tail[1] = (last >= 1 || state_.decoded_read >= 1) ? p_src[(static_cast<ptrdiff_t>(last) - 1) * channels_ + ch] : tail[0];
+            tail[0] = last_sample;
         }
 
         dwSamplesRendered += static_cast<DWORD>(samples_to_copy);
-        state_.decoded_read += static_cast<UINT32>(samples_to_copy);
+        state_.decoded_read += static_cast<uint32_t>(samples_to_copy);
         state_.position += samples_to_copy;
     }
     return dwSamplesRendered;

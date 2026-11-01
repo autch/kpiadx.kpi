@@ -44,9 +44,9 @@ private:
         ADXheader header{};
         int16_t coeff[2]{ 0, 0 };           // ADX filter coefficients
         int samples_per_block{ 0 };         // # of samples stored in an ADX block, for typical 18 bytes block, this is 32
-        UINT64 data_offset{ 0 };            // offset of the first block in file
-        UINT64 start_sample{ 0 };           // position of the first sample in the song
-        UINT64 samples{ 0 };
+        uint64_t data_offset{ 0 };          // offset of the first block in file
+        uint64_t start_sample{ 0 };         // position of the first sample in the song
+        uint64_t samples{ 0 };
         bool aax_loop{ false };             // AAX lpflg
     };
 
@@ -64,23 +64,23 @@ private:
     std::vector<Segment> segments_;
     int channels_{ 0 };
     int block_size_{ 0 };
-    UINT64 total_samples_{ 0 };
+    uint64_t total_samples_{ 0 };
     bool loop_enabled_{ false };
-    UINT64 loop_start_sample_{ 0 };
-    UINT64 loop_end_sample_{ 0 };
+    uint64_t loop_start_sample_{ 0 };
+    uint64_t loop_end_sample_{ 0 };
     bool song_is_aax_{ false };
 
     // playback state
     struct PlayState
     {
         size_t segment{ 0 };
-        UINT64 next_block{ 0 };             // index of the next block to decode in the segment
-        UINT64 position{ 0 };               // position in the song of the next sample to render
+        uint64_t next_block{ 0 };           // index of the next block to decode in the segment
+        uint64_t position{ 0 };             // position in the song of the next sample to render
         std::vector<ADXContext> ctx;        // ADX history samples per channel, size = # of channels
         std::vector<ADXContext> tail;       // last 2 rendered samples per channel, history for the next segment
         std::vector<int16_t> decoded;       // interleaved PCM of a block, size = (samples per block) * (# of channels)
-        UINT32 decoded_read{ 0 };           // # of samples in decoded already rendered
-        UINT32 decoded_count{ 0 };          // # of samples in decoded
+        uint32_t decoded_read{ 0 };         // # of samples in decoded already rendered
+        uint32_t decoded_count{ 0 };        // # of samples in decoded
     };
     PlayState state_;
     bool history_exact_{ false };           // state_.ctx is what decoding from the beginning would give
@@ -96,7 +96,7 @@ private:
     void extract_tags(IKpiTagInfo* pTagInfo) const;
 
     void positionAt(UINT64 qwPosSample);
-    void enterSegment(size_t index, UINT64 sample_in_segment, bool carry_history);
+    void enterSegment(size_t index, uint64_t sample_in_segment, bool carry_history);
     void restoreLoopState();
     DWORD render(int16_t* pOutput, DWORD dwSizeSample);
     bool decodeNextBlock();
