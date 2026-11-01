@@ -64,6 +64,8 @@ bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, ADXheader& header)
         return false;
     }
 
+    if (header.common.copyright_offset < 2)
+        return false;
     pFile->Seek(static_cast<INT64>(header.common.copyright_offset) - 2, FILE_BEGIN);
     if (pFile->Read(signature, 6) != 6)
     {
@@ -74,6 +76,16 @@ bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, ADXheader& header)
     if (memcmp(signature, ADX_COPYRIGHT_SIGNATURE, 6) != 0)
     {
         ::OutputDebugStringW(L"isADX: Signature is not (c)CRI\n");
+        return false;
+    }
+
+    const auto& c = header.common;
+    if (c.channel_count == 0 || c.sample_rate == 0
+        || c.sample_bitdepth == 0 || c.sample_bitdepth > 16
+        || c.block_size <= sizeof(uint16_t)
+        || (c.block_size - sizeof(uint16_t)) * 8 / c.sample_bitdepth == 0)
+    {
+        ::OutputDebugStringW(L"isADX: invalid header\n");
         return false;
     }
 
@@ -94,6 +106,14 @@ DWORD KpiADXDecoder::readAFS(IKpiFile* pFile)
     if (memcmp(afs_header.signature, AFS_SIGNATURE, 4) != 0)
     {
         ::OutputDebugStringW(L"isAFS: signature is not AFS\\0\n");
+        return 0;
+    }
+
+    const UINT64 file_size = pFile->GetSize();
+    if (file_size != KPI_FILE_EOF
+        && sizeof afs_header + static_cast<UINT64>(sizeof(AFSitem)) * afs_header.num_of_files > file_size)
+    {
+        ::OutputDebugStringW(L"isAFS: file is small to hold items\n");
         return 0;
     }
 
@@ -398,33 +418,41 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
     if (dwNumber > mediainfo_.dwCount)
         return 0;
 
-    IKpiFile* song;
-    if (source_type_ == SourceType::SOURCE_AFS)
+    try
     {
-        const auto& item = afs_items_[dwNumber - 1];
-        song = new KpiPartialFile(kpi_file_, item.offset, static_cast<UINT64>(item.offset) + item.length);
+        IKpiFile* song;
+        if (source_type_ == SourceType::SOURCE_AFS)
+        {
+            const auto& item = afs_items_[dwNumber - 1];
+            song = new KpiPartialFile(kpi_file_, item.offset, static_cast<UINT64>(item.offset) + item.length);
+        }
+        else
+        {
+            song = kpi_file_;
+            song->AddRef();
+        }
+        const bool ok = loadSong(song);
+        song->Release();     // セグメントが参照を持っている
+        if (!ok)
+        {
+            clearSong();
+            return 0;
+        }
+
+        fillMediaInfo(dwNumber);
+        positionAt(0);
+
+        if (ppMediaInfo != nullptr)
+            *ppMediaInfo = &mediainfo_;
+        if (pTagInfo != nullptr && ppMediaInfo != nullptr)
+        {
+            extract_tags(pTagInfo);
+        }
     }
-    else
-    {
-        song = kpi_file_;
-        song->AddRef();
-    }
-    const bool ok = loadSong(song);
-    song->Release();     // セグメントが参照を持っている
-    if (!ok)
+    catch (...)
     {
         clearSong();
         return 0;
-    }
-
-    fillMediaInfo(dwNumber);
-    positionAt(0);
-
-    if (ppMediaInfo != nullptr)
-        *ppMediaInfo = &mediainfo_;
-    if (pTagInfo != nullptr && ppMediaInfo != nullptr)
-    {
-        extract_tags(pTagInfo);
     }
 
     return dwNumber;

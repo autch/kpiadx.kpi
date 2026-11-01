@@ -34,8 +34,20 @@ void KpiADXDecoderModule::GetModuleInfo(const KPI_DECODER_MODULEINFO** ppInfo)
 
 DWORD KpiADXDecoderModule::Open(const KPI_MEDIAINFO* cpRequest, IKpiFile* pFile, IKpiFolder* pFolder, IKpiDecoder** ppDecoder)
 {
-    auto* decoder = new KpiADXDecoder();
-    const DWORD dwCount = decoder->Open(cpRequest, pFile);
+    *ppDecoder = nullptr;
+    KpiADXDecoder* decoder = nullptr;
+    DWORD dwCount = 0;
+    try
+    {
+        decoder = new KpiADXDecoder();
+        dwCount = decoder->Open(cpRequest, pFile);
+    }
+    catch (...)
+    {
+        dwCount = 0;
+    }
+    if (decoder == nullptr)
+        return 0;
     if (dwCount == 0)
     {
         ::OutputDebugStringW(L"decoder returned no songs");
