@@ -152,6 +152,9 @@ void KpiADXDecoder::clearSong()
     loop_enabled_ = false;
     loop_start_sample_ = loop_end_sample_ = 0;
     state_ = PlayState{};
+    loop_state_ = PlayState{};
+    loop_state_valid_ = false;
+    history_exact_ = false;
 }
 
 // pFile の ADX を曲の末尾にセグメントとして加える
@@ -370,7 +373,11 @@ UINT64 KpiADXDecoder::Seek(UINT64 qwPosSample, DWORD dwFlag)
         if (qwPosSample >= loop_end_sample_)
         {
             const UINT64 loop_length = loop_end_sample_ - loop_start_sample_;
-            positionAt(loop_start_sample_ + (qwPosSample - loop_start_sample_) % loop_length);
+            const UINT64 pos = loop_start_sample_ + (qwPosSample - loop_start_sample_) % loop_length;
+            if (pos == loop_start_sample_ && loop_state_valid_)
+                restoreLoopState();
+            else
+                positionAt(pos);
         }
         else
         {
@@ -400,6 +407,7 @@ void KpiADXDecoder::positionAt(UINT64 qwPosSample)
     }
     const auto& seg = segments_[index];
     enterSegment(index, std::min(qwPosSample - std::min(qwPosSample, seg.start_sample), seg.samples));
+    history_exact_ = (qwPosSample == 0);
 }
 
 // セグメント内の位置に移動する
@@ -420,6 +428,15 @@ void KpiADXDecoder::enterSegment(size_t index, UINT64 sample_in_segment)
         decodeNextBlock();
         state_.decoded_read = samples_to_skip;
     }
+}
+
+// ループ開始位置の状態に戻す
+void KpiADXDecoder::restoreLoopState()
+{
+    const auto& seg = segments_[loop_state_.segment];
+    state_ = loop_state_;
+    seg.file->Seek(static_cast<INT64>(seg.data_offset + state_.next_block * block_size_ * channels_), FILE_BEGIN);
+    history_exact_ = true;
 }
 
 // 現在のセグメントの次のブロックを state_.decoded にデコードする
@@ -481,8 +498,12 @@ DWORD KpiADXDecoder::Render(BYTE* pBuffer, DWORD dwSizeSample)
 {
     if (segments_.empty())
         return 0;
+    return render(reinterpret_cast<int16_t*>(pBuffer), dwSizeSample);
+}
 
-    auto* p_output = reinterpret_cast<int16_t*>(pBuffer);
+// pOutput == nullptr なら読み捨てる
+DWORD KpiADXDecoder::render(int16_t* pOutput, DWORD dwSizeSample)
+{
     DWORD dwSamplesRendered = 0;
 
     while (dwSamplesRendered < dwSizeSample)
@@ -492,7 +513,20 @@ DWORD KpiADXDecoder::Render(BYTE* pBuffer, DWORD dwSizeSample)
         {
             if (!loop_enabled_)
                 break;
-            positionAt(loop_start_sample_);
+            if (!loop_state_valid_)
+            {
+                // シークでループ開始位置を飛ばした場合は、先頭からデコードし直して求める
+                positionAt(0);
+                render(nullptr, static_cast<DWORD>(std::min<UINT64>(loop_start_sample_, MAXDWORD)));
+                loop_state_ = state_;
+                loop_state_valid_ = (state_.position == loop_start_sample_);
+                if (!loop_state_valid_)
+                    positionAt(loop_start_sample_);
+            }
+            else
+            {
+                restoreLoopState();
+            }
             continue;
         }
 
@@ -505,6 +539,12 @@ DWORD KpiADXDecoder::Render(BYTE* pBuffer, DWORD dwSizeSample)
             continue;
         }
 
+        if (loop_enabled_ && !loop_state_valid_ && history_exact_ && state_.position == loop_start_sample_)
+        {
+            loop_state_ = state_;
+            loop_state_valid_ = true;
+        }
+
         if (state_.decoded_read >= state_.decoded_count)
         {
             // データが途中で切れている場合、ループしない曲の最後のセグメントならそこで終わる
@@ -513,15 +553,20 @@ DWORD KpiADXDecoder::Render(BYTE* pBuffer, DWORD dwSizeSample)
                 break;
         }
 
+        // ループ開始位置ではいったん止めて状態を保存する
+        const UINT64 stop = (loop_enabled_ && state_.position < loop_start_sample_) ? loop_start_sample_ : end;
         const UINT64 samples_to_copy = std::min({
             static_cast<UINT64>(dwSizeSample - dwSamplesRendered),
             static_cast<UINT64>(state_.decoded_count - state_.decoded_read),
             segment_end - state_.position,
-            end - state_.position });
+            stop - state_.position });
 
-        memcpy(p_output + static_cast<size_t>(dwSamplesRendered) * channels_,
-            state_.decoded.data() + static_cast<size_t>(state_.decoded_read) * channels_,
-            static_cast<size_t>(samples_to_copy) * channels_ * sizeof(int16_t));
+        if (pOutput != nullptr)
+        {
+            memcpy(pOutput + static_cast<size_t>(dwSamplesRendered) * channels_,
+                state_.decoded.data() + static_cast<size_t>(state_.decoded_read) * channels_,
+                static_cast<size_t>(samples_to_copy) * channels_ * sizeof(int16_t));
+        }
 
         dwSamplesRendered += static_cast<DWORD>(samples_to_copy);
         state_.decoded_read += static_cast<UINT32>(samples_to_copy);

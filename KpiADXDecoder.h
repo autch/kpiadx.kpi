@@ -79,6 +79,9 @@ private:
         UINT32 decoded_count{ 0 };          // # of samples in decoded
     };
     PlayState state_;
+    bool history_exact_{ false };           // state_.ctx is what decoding from the beginning would give
+    PlayState loop_state_;                  // state_ at loop_start_sample_, to repeat the first pass exactly
+    bool loop_state_valid_{ false };
     std::vector<BYTE> source_buffer_;       // holds ADX blocks of all channels, size = (ADX block size) * (# of channels)
 
     void close();
@@ -90,6 +93,8 @@ private:
 
     void positionAt(UINT64 qwPosSample);
     void enterSegment(size_t index, UINT64 sample_in_segment);
+    void restoreLoopState();
+    DWORD render(int16_t* pOutput, DWORD dwSizeSample);
     bool decodeNextBlock();
     void decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDest, ADXContext& context) const;
 
