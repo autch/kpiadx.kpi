@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <string>
 #include <vector>
 
 #include "kpi_decoder.h"
@@ -59,6 +60,8 @@ private:
     IKpiFile* kpi_file_{ nullptr };         // file passed to Open
     SourceType source_type_{ SourceType::SOURCE_ADX };
     std::vector<AFSitem> afs_items_;
+    std::vector<std::wstring> afs_titles_;  // from the file name table, empty if none
+    std::vector<std::wstring> afs_dates_;   // from the file name table, "YYYY-MM-DD hh:mm:ss" or empty
     KPI_MEDIAINFO mediainfo_{};
 
     // the selected song
@@ -96,6 +99,7 @@ private:
     bool addSegment(uint64_t offset, uint64_t size, bool aax_loop);
     void fillMediaInfo(DWORD dwNumber);
     void extract_tags(IKpiTagInfo* pTagInfo) const;
+    void setTitle(IKpiTagInfo* pTagInfo, DWORD dwNumber, DWORD dwTagGetFlags) const;
 
     void positionAt(UINT64 qwPosSample);
     void enterSegment(size_t index, uint64_t sample_in_segment, bool carry_history);
@@ -107,4 +111,5 @@ private:
 
     static bool readADXHeader(IKpiFile* pFile, UINT64 qwOffset, ADXheader& header);
     DWORD readAFS(IKpiFile* pFile);
+    void readAFSNames(IKpiFile* pFile);
 };

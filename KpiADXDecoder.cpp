@@ -130,7 +130,94 @@ DWORD KpiADXDecoder::readAFS(IKpiFile* pFile)
         return 0;
     }
 
+    readAFSNames(pFile);
     return afs_header.num_of_files;
+}
+
+// AFS のファイル名表を読んで afs_titles_ に入れる
+// 名前表はなくてもよいので、読めなくても失敗にはしない
+void KpiADXDecoder::readAFSNames(IKpiFile* pFile)
+{
+    afs_titles_.clear();
+    afs_dates_.clear();
+    const size_t count = afs_items_.size();
+
+    // 名前表の位置は項目表の直後にある。そこが 0 のアーカイブでは最初の項目の直前にある
+    AFSitem table{};
+    const UINT64 qwAfterItems = sizeof(AFSheader) + static_cast<UINT64>(sizeof(AFSitem)) * count;
+    pFile->Seek(static_cast<INT64>(qwAfterItems), FILE_BEGIN);
+    if (pFile->Read(&table, sizeof table) < sizeof table)
+        table = AFSitem{};
+    if (table.offset == 0)
+    {
+        uint32_t first_offset = std::numeric_limits<uint32_t>::max();
+        for (const auto& item : afs_items_)
+        {
+            if (item.offset != 0)
+                first_offset = std::min(first_offset, item.offset);
+        }
+        if (first_offset != std::numeric_limits<uint32_t>::max() && first_offset >= qwAfterItems + sizeof table)
+        {
+            pFile->Seek(static_cast<INT64>(first_offset - sizeof table), FILE_BEGIN);
+            if (pFile->Read(&table, sizeof table) < sizeof table)
+                table = AFSitem{};
+        }
+    }
+
+    if (table.offset == 0 || table.length == 0)
+    {
+        ::OutputDebugStringW(L"isAFS: no file name table\n");
+        return;
+    }
+    const uint64_t names_size = static_cast<uint64_t>(sizeof(AFSname)) * count;
+    if (table.length < names_size)
+    {
+        ::OutputDebugStringW(L"isAFS: file name table is smaller than the items\n");
+        return;
+    }
+    const UINT64 file_size = pFile->GetSize();
+    if ((file_size != KPI_FILE_EOF && table.offset + names_size > file_size) || names_size > MAXDWORD)
+    {
+        ::OutputDebugStringW(L"isAFS: file name table is beyond the end of file\n");
+        return;
+    }
+
+    std::vector<AFSname> names(count);
+    const DWORD bytes_to_read = static_cast<DWORD>(names_size);
+    pFile->Seek(static_cast<INT64>(table.offset), FILE_BEGIN);
+    if (pFile->Read(names.data(), bytes_to_read) < bytes_to_read)
+    {
+        ::OutputDebugStringW(L"isAFS: cannot read the file name table\n");
+        return;
+    }
+
+    // 名前は NUL 終端とは限らない。日本語の名前は Shift_JIS と見なす
+    afs_titles_.reserve(count);
+    afs_dates_.reserve(count);
+    for (const auto& entry : names)
+    {
+        const int name_length = static_cast<int>(strnlen(entry.name, sizeof entry.name));
+        std::wstring title;
+        const int title_length = (name_length > 0) ? MultiByteToWideChar(932, 0, entry.name, name_length, nullptr, 0) : 0;
+        if (title_length > 0)
+        {
+            title.resize(static_cast<size_t>(title_length));
+            MultiByteToWideChar(932, 0, entry.name, name_length, title.data(), title_length);
+        }
+        afs_titles_.push_back(std::move(title));
+
+        // 日時が入っていない(すべて 0 の)アーカイブや、ありえない値は出さない
+        std::wstring date;
+        if (entry.year != 0 && entry.month >= 1 && entry.month <= 12 && entry.day >= 1 && entry.day <= 31
+            && entry.hour < 24 && entry.minute < 60 && entry.second < 60)
+        {
+            wchar_t buf[32];
+            wsprintfW(buf, L"%04u-%02u-%02u %02u:%02u:%02u",
+                entry.year, entry.month, entry.day, entry.hour, entry.minute, entry.second);
+            date = buf;
+        }
+        afs_dates_.push_back(std::move(date));
+    }
 }
 
 
@@ -388,6 +475,29 @@ void KpiADXDecoder::extract_tags(IKpiTagInfo* pTagInfo) const
     {
         set_tag(L"AAX_Segments", L"%u", static_cast<uint32_t>(segments_.size()));
     }
+
+    // AFS のファイル名表にある日時
+    const DWORD number = mediainfo_.dwNumber;
+    if (number >= 1 && number <= afs_dates_.size() && !afs_dates_[number - 1].empty())
+    {
+        pTagInfo->wSetValueW(L"AFS_FileDate", -1, afs_dates_[number - 1].c_str(), -1);
+    }
+}
+
+// AFS のファイル名表の名前を曲名にする
+void KpiADXDecoder::setTitle(IKpiTagInfo* pTagInfo, DWORD dwNumber, DWORD dwTagGetFlags) const
+{
+    // 本体が曲名を求めていない
+    if ((dwTagGetFlags & KPI_TAGGET_FLAG_TITLE) == 0)
+        return;
+    // AFS ではない、または名前表がない
+    if (dwNumber == 0 || dwNumber > afs_titles_.size())
+        return;
+    // 空の名前はタグとして設定しない
+    const auto& title = afs_titles_[dwNumber - 1];
+    if (title.empty())
+        return;
+    pTagInfo->wSetValueW(SZ_KMP_NAME_TITLE_W, -1, title.c_str(), -1);
 }
 
 void KpiADXDecoder::fillMediaInfo(DWORD dwNumber)
@@ -417,11 +527,23 @@ void KpiADXDecoder::fillMediaInfo(DWORD dwNumber)
 
 DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, IKpiTagInfo* pTagInfo, DWORD dwTagGetFlags)
 {
+    if (ppMediaInfo != nullptr)
+        *ppMediaInfo = nullptr;
+
+    // 0 は AFS 全体のタグ取得だが、AFS 全体の情報は持っていない
     if (dwNumber == 0)
         return 0;
 
     if (dwNumber > mediainfo_.dwCount)
         return 0;
+
+    // タグ取得専用(Media エクスプローラでの表示用)。軽くするため曲は読み込まない
+    if (ppMediaInfo == nullptr)
+    {
+        if (pTagInfo != nullptr)
+            setTitle(pTagInfo, dwNumber, dwTagGetFlags);
+        return dwNumber;
+    }
 
     try
     {
@@ -445,10 +567,10 @@ DWORD KpiADXDecoder::Select(DWORD dwNumber, const KPI_MEDIAINFO** ppMediaInfo, I
         fillMediaInfo(dwNumber);
         positionAt(0);
 
-        if (ppMediaInfo != nullptr)
-            *ppMediaInfo = &mediainfo_;
-        if (pTagInfo != nullptr && ppMediaInfo != nullptr)
+        *ppMediaInfo = &mediainfo_;
+        if (pTagInfo != nullptr)
         {
+            setTitle(pTagInfo, dwNumber, dwTagGetFlags);
             extract_tags(pTagInfo);
         }
     }

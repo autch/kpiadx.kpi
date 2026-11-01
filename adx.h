@@ -157,3 +157,20 @@ struct AFSitem
     uint32_t offset;
     uint32_t length;
 };
+
+// file name table of AFS (optional)
+// its offset and size are stored as an AFSitem just after the item table,
+// or (in some archives) just before the first item
+struct AFSname
+{
+    char name[32];          // not always NUL terminated
+    uint16_t year;
+    uint16_t month;
+    uint16_t day;
+    uint16_t hour;
+    uint16_t minute;
+    uint16_t second;
+    uint32_t unreliable;    // often a copy of the item table shifted by one, not the file size
+};
+
+static_assert(sizeof(AFSname) == 0x30, "sizeof AFSname is not 0x30 bytes.  maybe padding?");
