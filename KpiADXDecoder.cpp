@@ -43,20 +43,16 @@ namespace
 // pFile の qwOffset から ADX が始まっていればヘッダを読んで true を返す
 bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, UINT64 qwOffset, ADXheader& header)
 {
-    BYTE buf[sizeof(ADXheader)]{};
     uint8_t signature[6];
 
+    header = ADXheader{};
     pFile->Seek(static_cast<INT64>(qwOffset), FILE_BEGIN);
-    const DWORD got = pFile->Read(buf, sizeof buf);
-    if (got < ADX_HEADER_SIZE)
+    if (pFile->Read(&header.common, sizeof header.common) < sizeof header.common)
     {
         ::OutputDebugStringW(L"isADX: cannot read whole common\n");
         return false;
     }
-    // ファイルの末尾に届いた分は 0 にする
-    memset(buf + got, 0, sizeof buf - got);
-    memcpy(&header, buf, sizeof header);
-    header.prepare();
+    header.common.prepare();
 
     if (header.common.sig_8000 != ADX_SIGNATURE)
     {
@@ -91,6 +87,20 @@ bool KpiADXDecoder::readADXHeader(IKpiFile* pFile, UINT64 qwOffset, ADXheader& h
     {
         ::OutputDebugStringW(L"isADX: invalid header\n");
         return false;
+    }
+
+    // ループ情報はヘッダの長さ(データの開始位置まで)に収まっているときだけある
+    const uint32_t loop_offset = adx_loop_offset(common);
+    if (loop_offset != 0 && common.copyright_offset + 4u > loop_offset + sizeof(ADXloop))
+    {
+        pFile->Seek(static_cast<INT64>(qwOffset + loop_offset), FILE_BEGIN);
+        if (pFile->Read(&header.loop, sizeof header.loop) < sizeof header.loop)
+        {
+            ::OutputDebugStringW(L"isADX: cannot read loop information\n");
+            return false;
+        }
+        header.loop.prepare();
+        header.has_loop_info = true;
     }
 
     return true;
@@ -360,27 +370,22 @@ bool KpiADXDecoder::loadSong()
             return false;
 
         // ループ情報は ADX のヘッダにある
-        uint32_t loop_start = 0, loop_end = 0;
+        // v3 ではループ回数かフラグ、v4 ではフラグが 0 でなければループする
+        const auto& loop = header.loop;
         switch (header.common.version)
         {
         case ADXVersion::ADX_VERSION_3:
-            loop_enabled_ = (header.common.copyright_offset + 4) > ADX_V3_HEADER_SIZE
-                && (header.v3.loop_enabled_1 != 0 || header.v3.loop_enabled_2 != 0);
-            loop_start = header.v3.loop_begin_sample_index;
-            loop_end = header.v3.loop_end_sample_index;
+            loop_enabled_ = header.has_loop_info && (loop.loop_count != 0 || loop.loop_flag != 0);
             break;
         case ADXVersion::ADX_VERSION_4:
-            loop_enabled_ = (header.common.copyright_offset + 4) > ADX_V4_HEADER_SIZE
-                && header.v4.loop_enabled != 0;
-            loop_start = header.v4.loop_begin_sample_index;
-            loop_end = header.v4.loop_end_sample_index;
+            loop_enabled_ = header.has_loop_info && loop.loop_flag != 0;
             break;
         default:
             loop_enabled_ = false;
             break;
         }
-        loop_start_sample_ = loop_start;
-        loop_end_sample_ = loop_end;
+        loop_start_sample_ = loop.loop_begin_sample_index;
+        loop_end_sample_ = loop.loop_end_sample_index;
     }
     else if (parseAAX(song_file_, aax_segments))
     {

@@ -27,12 +27,9 @@ enum class ADXVersion : uint8_t
 };
 
 constexpr auto ADX_HEADER_SIZE = 0x14;	// 20
-constexpr auto ADX_V3_HEADER_SIZE = 0x2c;	// 44
-constexpr auto ADX_V4_HEADER_SIZE = 0x38;	// 56
-
-constexpr auto ADX_V3_PART_SIZE = (ADX_V3_HEADER_SIZE - ADX_HEADER_SIZE);
-constexpr auto ADX_V4_PART_SIZE = (ADX_V4_HEADER_SIZE - ADX_HEADER_SIZE);
-
+constexpr auto ADX_V3_LOOP_OFFSET = 0x14;	// v3 has the loop information just after the common part
+constexpr auto ADX_V4_HISTORY_OFFSET = 0x18;	// v4 has the history samples and then the loop information
+constexpr auto ADX_V4_MIN_HISTORY_SIZE = 0x08;	// 2 x int16_t per channel, at least 2 channels
 
 struct ADXheaderCommon
 {
@@ -61,85 +58,57 @@ struct ADXheaderCommon
 
 static_assert(sizeof(ADXheaderCommon) == ADX_HEADER_SIZE, "sizeof ADX common common is not 20 bytes.  maybe padding?");
 
-struct ADXheaderV3
+// loop information of v3 and v4
+// reference: VGAudio AdxReader, vgmstream meta/adx.c
+struct ADXloop
 {
-    // 0x14
-    uint16_t loop_alignment_samples;
-    uint16_t loop_enabled_1;
-    uint32_t loop_enabled_2;
+    uint16_t inserted_samples;	// silent samples inserted at the beginning, to align the loop start to a block
+    uint16_t loop_count;		// 0 if not looped
+    uint32_t loop_flag;			// non-zero if looped
     uint32_t loop_begin_sample_index;
-    // 0x20
     uint32_t loop_begin_byte_index;
     uint32_t loop_end_sample_index;
     uint32_t loop_end_byte_index;
 
     inline void prepare()
     {
-        loop_alignment_samples = ntohs(loop_alignment_samples);
-        loop_enabled_1 = ntohs(loop_enabled_1);
-        loop_enabled_2 = ntohl(loop_enabled_2);
+        inserted_samples = ntohs(inserted_samples);
+        loop_count = ntohs(loop_count);
+        loop_flag = ntohl(loop_flag);
         loop_begin_sample_index = ntohl(loop_begin_sample_index);
-
         loop_begin_byte_index = ntohl(loop_begin_byte_index);
         loop_end_sample_index = ntohl(loop_end_sample_index);
         loop_end_byte_index = ntohl(loop_end_byte_index);
     }
 };
 
-static_assert(sizeof(ADXheaderV3) == ADX_V3_PART_SIZE, "sizeof ADX V3 common is not 0x2c bytes.  maybe padding?");
+static_assert(sizeof(ADXloop) == 0x18, "sizeof ADXloop is not 0x18 bytes.  maybe padding?");
 
-struct ADXheaderV4
+// offset of ADXloop in the header, or 0 if the version has no loop information
+// v4 places it after the history samples, so it moves when there are 3 or more channels
+inline uint32_t adx_loop_offset(const ADXheaderCommon& common)
 {
-    // 0x14
-    uint8_t reserved[16];
-    // 0x24
-    uint32_t loop_enabled;
-    uint32_t loop_begin_sample_index;
-    uint32_t loop_begin_byte_index;
-    // 0x30
-    uint32_t loop_end_sample_index;
-    uint32_t loop_end_byte_index;
-
-    inline void prepare()
+    switch (common.version)
     {
-        loop_enabled = ntohl(loop_enabled);
-        loop_begin_sample_index = ntohl(loop_begin_sample_index);
-        loop_begin_byte_index = ntohl(loop_begin_byte_index);
-
-        loop_end_sample_index = ntohl(loop_end_sample_index);
-        loop_end_byte_index = ntohl(loop_end_byte_index);
+    case ADXVersion::ADX_VERSION_3:
+        return ADX_V3_LOOP_OFFSET;
+    case ADXVersion::ADX_VERSION_4:
+    {
+        const uint32_t history_size = 4u * common.channel_count;
+        return ADX_V4_HISTORY_OFFSET + (history_size > ADX_V4_MIN_HISTORY_SIZE ? history_size : ADX_V4_MIN_HISTORY_SIZE);
     }
-};
-
-static_assert(sizeof(ADXheaderV4) == ADX_V4_PART_SIZE, "sizeof ADX V4 common is not 0x38 bytes.  maybe padding?");
+    default:
+        // v5 has no loop
+        return 0;
+    }
+}
 
 struct ADXheader
 {
     ADXheaderCommon common;
-    union
-    {
-        ADXheaderV3 v3;
-        ADXheaderV4 v4;
-    };
-
-    inline void prepare()
-    {
-        common.prepare();
-
-        switch (common.version)
-        {
-        case ADXVersion::ADX_VERSION_3:
-            v3.prepare();
-            break;
-        case ADXVersion::ADX_VERSION_4:
-        case ADXVersion::ADX_VERSION_5:
-            v4.prepare();
-            break;
-        }
-    }
+    ADXloop loop;               // all zero if !has_loop_info
+    bool has_loop_info;         // the header is long enough to hold ADXloop
 };
-
-static_assert(sizeof(ADXheader) == ADX_V4_HEADER_SIZE, "sizeof ADXheader is not 0x38 bytes.  maybe padding?");
 
 // https://azuco.sakura.ne.jp/column/ag_adx/cri.html
 // note: AFS is in LITTLE ENDIAN
