@@ -1,0 +1,89 @@
+# x64 / x86 の kpiadx.kpi を MSVC でビルドし、配布用の zip にまとめる。
+# - push / pull request: zip を Actions のアーティファクトにする
+# - v* のタグの push: さらに zip を添付したドラフトのリリースを作る (説明を書いてから公開する)
+name: build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # ほかのプラグインとそろえて Visual Studio 2022 でビルドする (windows-latest は VS 2026 になった)
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            platform: x64
+          - arch: x86
+            platform: Win32
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A ${{ matrix.platform }}
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      # 合成した ADX/AAX/AFS を tools/fixtures.py の参照デコーダーと照合し、シークも確かめる
+      - name: Test
+        working-directory: build
+        run: ctest -C Release --output-on-failure
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kpi-${{ matrix.arch }}
+          path: build/bin/Release/kpiadx.kpi
+          if-no-files-found: error
+          retention-days: 1
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # ドラフトのリリースを作るため
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: kpi-*
+          path: kpi
+
+      - name: Make zip
+        id: zip
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            name="kpiadx_${GITHUB_REF_NAME}"
+          else
+            name="kpiadx_${GITHUB_SHA::7}"
+          fi
+          mkdir -p dist/x64 dist/x86
+          cp kpi/kpi-x64/kpiadx.kpi dist/x64/
+          cp kpi/kpi-x86/kpiadx.kpi dist/x86/
+          cp kpiadx.txt dist/   # Shift_JIS / CRLF のまま入れる
+          cp COPYING dist/
+          (cd dist && zip -9 -r "../$name.zip" kpiadx.txt COPYING x64 x86)
+          unzip -l "$name.zip"
+          echo "file=$name.zip" >> "$GITHUB_OUTPUT"
+
+      # zip をそのまま上げる (archive: false なら zip の中に zip ができない)
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.zip.outputs.file }}
+          archive: false
+          if-no-files-found: error
+
+      - if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          files: ${{ steps.zip.outputs.file }}

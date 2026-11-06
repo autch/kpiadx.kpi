@@ -5,8 +5,8 @@
 #include "kpi_impl.h"
 
 // http://kbmplaybbs.dip.jp/?md=ov&no=5321&pn=5314&ln=1
-// IKpiFile ‚Ìˆê•”•ª‚¾‚¯‚ğˆµ‚¤B
-// –³ˆ³kƒA[ƒJƒCƒu‚È‚Ç‚Åg‚¤B
+// IKpiFile ã®ä¸€éƒ¨åˆ†ã ã‘ã‚’æ‰±ã†ã€‚
+// ç„¡åœ§ç¸®ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ãªã©ã§ä½¿ã†ã€‚
 class KpiPartialFile : public KbKpiUnknownImpl<IKpiFile>
 {
 private:
@@ -36,16 +36,16 @@ public:
         m_pFile->Release();
     }
 
-    // IKpiFile ”h¶
+    // IKpiFile æ´¾ç”Ÿ
     DWORD WINAPI GetFileName(wchar_t* pszName, DWORD dwSize) override { pszName[0] = 0; return 0; }
     BOOL WINAPI GetRealFileW(const wchar_t** ppszFileName) override { *ppszFileName = nullptr; return FALSE; }
     BOOL WINAPI GetRealFileA(const char** ppszFileName) override { *ppszFileName = nullptr; return FALSE; }
     BOOL WINAPI GetBuffer(const BYTE** ppBuffer, size_t* pstSize) override { *ppBuffer = nullptr; *pstSize = 0; return FALSE; }
     BOOL WINAPI CreateClone(IKpiFile** ppFile) override { *ppFile = nullptr; return FALSE; }
     BOOL WINAPI Abort(void) override { return FALSE; }
-    //ª‚±‚±‚Ü‚Å–¢‘Î‰‚Å OK
+    //â†‘ã“ã“ã¾ã§æœªå¯¾å¿œã§ OK
 
-    DWORD WINAPI Read(void* pBuffer, DWORD dwSize)
+    DWORD WINAPI Read(void* pBuffer, DWORD dwSize) override
     {
         if (dwSize + m_qwCurrentPos > m_qwEndOffset) {
             dwSize = static_cast<DWORD>(m_qwEndOffset - m_qwCurrentPos);

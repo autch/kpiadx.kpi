@@ -1,372 +1,372 @@
-#pragma once
+﻿#pragma once
 #ifndef KMP_PI_H
 #define KMP_PI_H
 
 /*
 
-   KbMedia Player Plugin SDK (2016/10/03 ��)
+   KbMedia Player Plugin SDK (2016/10/03 版)
 
-   �J���Ҍ����ł��B
-   KbMedia Player �̃v���O�C�����J�����Ă݂����l���������ǂ݉������B
-   �蔲���ŃR�����g�� C++ �p�ɂȂ��Ă܂����A�����̃R���p�C���Ȃ� C �ł����v�ł��傤�B
+   開発者向けです。
+   KbMedia Player のプラグインを開発してみたい人だけがお読み下さい。
+   手抜きでコメントは C++ 用になってますが、今時のコンパイラなら C でも大丈夫でしょう。
 
-   ���ۂ̃v���O�C���̃\�[�X�R�[�h��
+   実際のプラグインのソースコードは
 
    http://hwm5.gyao.ne.jp/kobarin/kpi/kpi.htm
 
-   �ɂ���܂��B
+   にあります。
 
-   �K�v�ŏ����̋@�\�����Ȃ����߁A�o���邱�Ƃ͂��Ȃ萧������܂����A
-   ���̕��v���O�C�������̂͊ȒP�Ȃ͂��ł��B�v���O�C�����g���̂��ȒP�ł��傤�B
+   必要最小限の機能しかないため、出来ることはかなり制限されますが、
+   その分プラグインを作るのは簡単なはずです。プラグインを使うのも簡単でしょう。
 
-   64bit�łŃr���h����� v2.80beta �ȍ~�� 64bit �łŎg�p�\�B
-   �V�d�l�Ή��̃v���O�C���̐��������[�X����A���d�l�̃v���O�C���� 64bit �ł��܂߂Ĉ�������
-   �T�|�[�g���܂��B
+   64bit版でビルドすれば v2.80beta 以降の 64bit 版で使用可能。
+   新仕様対応のプラグインの正式リリース後も、旧仕様のプラグインは 64bit 版も含めて引き続き
+   サポートします。
 
 
-   ���ŗ���
+   改版履歴
 
-   �E2016/10/02
-     �ESZ_KMP_NAME_XXXX ���C��(2016/09/12 �łƎ�������)
-   �E2016/09/12
-     �ESZ_KMP_NAME_XXXX �ɍ��ڒǉ�
-     �ESZ_KMP_NAME_XXXX_W ��ǉ�
-     �ESZ_KMP_NAME_XXXX �� _UNICODE ����`����Ă��邩�ǂ����� A/W ��؂�ւ���悤�ɕύX
-     �E�r���h���Ƀ\�[�X�R�[�h�̎蒼�����K�v�ɂȂ�����������Ȃ����A���őO�̃w�b�_�Ńr���h
-       �������̂ł��{�͖̂��Ȃ����삷��
-   �E2015/11/30
-     �E11/03�ł̎b��d�l(OpenFromStream/kmp_GetTagInfoFromStream_v0 ��)��p�~
-   �E2015/11/03
-     �EUNICODE �Ή��A�X�g���[������̃t�@�C���ǂݍ��ݑΉ��̂��߂̎d�l�ǉ��i�b��Łj
-     �EKMPMODULE::dwVersion �� KMPMODULE_VERSION_NEW �̏ꍇ��ǉ�
-     �EKMPMODULE::OpenFromStream (UNICODE �Ή��͂�����ōs���AOpen �̈������� char* �̂܂ܕύX�Ȃ�)
-     �Ekmp_GetTestTagInfoFromStream_v0
-     ��ǉ�(�b��łȂ̂Ő����Ō��J���܂łɔp�~�\��)
-     �EIKmpTagInfo �̃��\�b�h����ύX
-       �ESetValueA => aSetValueA
-       �ESetValueW => aSetValueW
-       �ESetValueU8 => aSetValueU8
-       �E�C���^�[�t�F�[�X�ɕύX�͂Ȃ��̂Ń��\�b�h���ύX�O�̃v���O�C��������ɉe���Ȃ�
-   �E2015/09/06
-     �E���ɂȂ�(�\�[�X�R�[�h�u����� URL ���C�������̂�)
-   �E2015/08/15
-     �ESetValue(NULL, NULL) �Ɋւ���L�q���C���i�v���O�C���d�l���̂��͕̂ύX�Ȃ��j
-   �E2015/08/09
-     �ESZ_KMP_TAGINFO_NAME_XXXX ��F�X�ǉ�
-       �EORIGARTIST/COPYRIGHT/COMPOSER/PERFORMER/DISCID/ENCODED_BY/ECONDEING_SETTINGS
-   �E2015/06/14
-     �Ekmp_GetTestTagInfo ��ǉ�
-     �E�ʎq���r�b�g���� 64bit float ��ǉ�
+   ・2016/10/02
+     ・SZ_KMP_NAME_XXXX を修正(2016/09/12 版と実質同じ)
+   ・2016/09/12
+     ・SZ_KMP_NAME_XXXX に項目追加
+     ・SZ_KMP_NAME_XXXX_W を追加
+     ・SZ_KMP_NAME_XXXX は _UNICODE が定義されているかどうかで A/W を切り替えるように変更
+     ・ビルド時にソースコードの手直しが必要になったかもしれないが、改版前のヘッダでビルド
+       したものでも本体は問題なく動作する
+   ・2015/11/30
+     ・11/03版の暫定仕様(OpenFromStream/kmp_GetTagInfoFromStream_v0 他)を廃止
+   ・2015/11/03
+     ・UNICODE 対応、ストリームからのファイル読み込み対応のための仕様追加（暫定版）
+     ・KMPMODULE::dwVersion が KMPMODULE_VERSION_NEW の場合を追加
+     ・KMPMODULE::OpenFromStream (UNICODE 対応はこちらで行う、Open の引き数は char* のまま変更なし)
+     ・kmp_GetTestTagInfoFromStream_v0
+     を追加(暫定版なので正式版公開時までに廃止予定)
+     ・IKmpTagInfo のメソッド名を変更
+       ・SetValueA => aSetValueA
+       ・SetValueW => aSetValueW
+       ・SetValueU8 => aSetValueU8
+       ・インターフェースに変更はないのでメソッド名変更前のプラグインも動作に影響なし
+   ・2015/09/06
+     ・特になし(ソースコード置き場の URL を修正したのみ)
+   ・2015/08/15
+     ・SetValue(NULL, NULL) に関する記述を修正（プラグイン仕様そのものは変更なし）
+   ・2015/08/09
+     ・SZ_KMP_TAGINFO_NAME_XXXX を色々追加
+       ・ORIGARTIST/COPYRIGHT/COMPOSER/PERFORMER/DISCID/ENCODED_BY/ECONDEING_SETTINGS
+   ・2015/06/14
+     ・kmp_GetTestTagInfo を追加
+     ・量子化ビット数に 64bit float を追加
 */
 
-#define KMPMODULE_VERSION 100     //KMPMODULE �̃o�[�W����
+#define KMPMODULE_VERSION 100     //KMPMODULE のバージョン
 
-#define SZ_KMP_GETMODULE  "kmp_GetTestModule" //�܂��i���܂ŁH�j�e�X�g��...
-#define SZ_KMP_CONFIG     "kmp_Config"        //�v���O�C���ݒ�p�iv2.38beta2 �ȍ~�őΉ��j
-#define SZ_KMP_GETTAGINFO "kmp_GetTestTagInfo"//�^�O�擾�p�iv2.51beta3�ȍ~�őΉ��j
+#define SZ_KMP_GETMODULE  "kmp_GetTestModule" //まだ（いつまで？）テスト版...
+#define SZ_KMP_CONFIG     "kmp_Config"        //プラグイン設定用（v2.38beta2 以降で対応）
+#define SZ_KMP_GETTAGINFO "kmp_GetTestTagInfo"//タグ取得用（v2.51beta3以降で対応）
 
-typedef void* HKMP;//'K'b'M'edia 'P'layer Plugin �� Handle
+typedef void* HKMP;//'K'b'M'edia 'P'layer Plugin の Handle
 
 // {C39B5214-BAD2-4875-87BD-26B23FF4BFD1}
 DEFINE_GUID(IID_IKmpTagInfo,
 0xc39b5214, 0xbad2, 0x4875, 0x87, 0xbd, 0x26, 0xb2, 0x3f, 0xf4, 0xbf, 0xd1);
-//��KbMedia Player �������Ŏg�p
+//↑KbMedia Player が内部で使用
 typedef struct
-{//�I�[�v�������T�E���h�f�[�^�̏��
-    DWORD dwSamplesPerSec;//�T���v�����O���g��(44100, 22050 �Ȃ�)
-    DWORD dwChannels;     //�`�����l����( mono = 1, stereo = 2)
-    DWORD dwBitsPerSample;//�ʎq���r�b�g��( 8 or 16 or 24 or 32 or -32(32bit float) or -64(64bit float) )
-                          //�{�̂���̃r�b�g���v���Ɋւ�炸�Ή��o����ő�̃r�b�g����Ԃ����Ƃ𐄏�
-    DWORD dwLength;       //�Ȃ̒����i�v�Z�s�\�ȏꍇ�� 0xFFFFFFFF�j
-                          //�P�t�@�C�������ȁidwReserved2 == 1�j�̂Ƃ��́A�Ȑ��� 1000 �{�����l�ɂ���B
-                          //�Ⴆ�� 10 �Ȃ̏ꍇ�� dwLength == 10000 �Ƃ���B
-                          //�P�t�@�C�������Ȃ̏ꍇ�A�Ȗ��̉��t���Ԃ��擾���邱�Ƃ͏o���Ȃ��B
-                          //�ʖڂȎd�l�ŃX�~�}�Z��
-    DWORD dwSeekable;     //�V�[�N�ɑΉ����Ă���ꍇ�� 1�A���Ȃ��ꍇ�� 0
-    DWORD dwUnitRender;   //Render �֐��̑�R�����͂��̒l���n�����i�ǂ�Ȓl�ł��ǂ��ꍇ�� 0�j
-    DWORD dwReserved1;    //�������[�v���ĉ��t�I�����Ȃ��Ȃ̏ꍇ�� 1, �����łȂ��ꍇ�� 0
-                          //Render �̌Ăяo�����J��Ԃ��Ă����t�I�����Ȃ��ꍇ�� 1 �ɂ���
-                          //dwReserved1 == 1 �̏ꍇ�A
-                          //  �E�v���C���[�{�̂́u�P�ȃ��s�[�g�v���L���ɂȂ��Ă���ꍇ�͖������[�v
-                          //  �EdwLength != 0xFFFFFFFF �̏ꍇ�� dwLength �����Đ�������Ƀv���C���[
-                          //    �{�̂ɂ���ăt�F�[�h�A�E�g�E���t�I�������
-                          //  �EdwLength == 0xFFFFFFFF �̏ꍇ�̓v���C���[�̐ݒ�́u�f�t�H���g�̒����v
-                          //    �����Đ�������Ƀt�F�[�h�A�E�g�E���t�I�������
-                          //dwReserved1 == 0 �̏ꍇ�A
-                          //  �ERender �̖߂�l����R����(dwSize)��菬�����l���Ԃ�܂ōĐ������
-    DWORD dwReserved2;    //�P�t�@�C�������Ȃ̏ꍇ�� 1, �P�t�@�C���P�Ȃ̂Ƃ��� 0
-                          //dwReserved2 == 1 �̏ꍇ�AdwLength �ɂ͋Ȑ��� 1000 �{�����l��Ԃ����ƁB
-                          //dwReserved2 == 1 �̏ꍇ�ASetPosition �� dwPos ��(�Ȕԍ� * 1000)���n�����
-                          //�悤�ɂȂ�A�V�[�N�͏o���Ȃ��Ȃ�̂� dwSeek == 0 �Ƃ��邱�ƁB
-                          //���݂̎d�l�ł́A�P�t�@�C�������Ȃ̊g���q�� KbMedia Player �{�̂Ō��ߑł�
-                          //����Ă���A�{�̂��m��Ȃ��g���q�ɑ΂��Ă��̒l�� 1 �ɂ��Ă�����ɂ͓���
-                          //���Ȃ����A�{�̂��P�t�@�C�������ȂƂ��Ĉ����Ă���`���ɑ΂��Ă��̒l�� 0 ��
-                          //���Ă��A��͂萳�퓮�삵�Ȃ��i����
-                          //�ʖڂȎd�l�ŃX�~�}�Z��
+{//オープンしたサウンドデータの情報
+    DWORD dwSamplesPerSec;//サンプリング周波数(44100, 22050 など)
+    DWORD dwChannels;     //チャンネル数( mono = 1, stereo = 2)
+    DWORD dwBitsPerSample;//量子化ビット数( 8 or 16 or 24 or 32 or -32(32bit float) or -64(64bit float) )
+                          //本体からのビット数要求に関わらず対応出来る最大のビット数を返すことを推奨
+    DWORD dwLength;       //曲の長さ（計算不可能な場合は 0xFFFFFFFF）
+                          //１ファイル複数曲（dwReserved2 == 1）のときは、曲数を 1000 倍した値にする。
+                          //例えば 10 曲の場合は dwLength == 10000 とする。
+                          //１ファイル複数曲の場合、曲毎の演奏時間を取得することは出来ない。
+                          //駄目な仕様でスミマセン
+    DWORD dwSeekable;     //シークに対応している場合は 1、しない場合は 0
+    DWORD dwUnitRender;   //Render 関数の第３引数はこの値が渡される（どんな値でも良い場合は 0）
+    DWORD dwReserved1;    //無限ループして演奏終了しない曲の場合に 1, そうでない場合に 0
+                          //Render の呼び出しを繰り返しても演奏終了しない場合に 1 にする
+                          //dwReserved1 == 1 の場合、
+                          //  ・プレイヤー本体の「単曲リピート」が有効になっている場合は無限ループ
+                          //  ・dwLength != 0xFFFFFFFF の場合は dwLength だけ再生した後にプレイヤー
+                          //    本体によってフェードアウト・演奏終了される
+                          //  ・dwLength == 0xFFFFFFFF の場合はプレイヤーの設定の「デフォルトの長さ」
+                          //    だけ再生した後にフェードアウト・演奏終了される
+                          //dwReserved1 == 0 の場合、
+                          //  ・Render の戻り値が第３引数(dwSize)より小さい値が返るまで再生される
+    DWORD dwReserved2;    //１ファイル複数曲の場合に 1, １ファイル１曲のときに 0
+                          //dwReserved2 == 1 の場合、dwLength には曲数を 1000 倍した値を返すこと。
+                          //dwReserved2 == 1 の場合、SetPosition の dwPos に(曲番号 * 1000)が渡される
+                          //ようになり、シークは出来なくなるので dwSeek == 0 とすること。
+                          //現在の仕様では、１ファイル複数曲の拡張子は KbMedia Player 本体で決め打ち
+                          //されており、本体が知らない拡張子に対してこの値を 1 にしても正常には動作
+                          //しないし、本体が１ファイル複数曲として扱っている形式に対してこの値を 0 に
+                          //しても、やはり正常動作しない（ぉぃ
+                          //駄目な仕様でスミマセン
 }SOUNDINFO;
 
 
 typedef struct
 {
     DWORD dwVersion;
-    //���W���[���̃o�[�W�����B�v���O�C���̃o�[�W�����ł͂Ȃ��B
-    //�K�� KMPMODULE_VERSION(=100) �ɂ��邱�ƁB
-    //���̒l�� KbMedia Player �����҂���l�ƈ�v���Ȃ��ꍇ�́AKbMedia Player
-    //�ɂ���Ē����� FreeLibrary ���Ă΂��B
-    //���̏ꍇ�AInit() �� Deinit() ���Ă΂�Ȃ����Ƃɒ��ӁB
-    //dwVersion == KMPMODULE_VERSION_NEW �̏ꍇ�AOpenFromStream �̕���
-    //�Ăяo���悤�ɂȂ�(�����Ō��J���ɂ͔p�~�\��)
+    //モジュールのバージョン。プラグインのバージョンではない。
+    //必ず KMPMODULE_VERSION(=100) にすること。
+    //この値が KbMedia Player が期待する値と一致しない場合は、KbMedia Player
+    //によって直ちに FreeLibrary が呼ばれる。
+    //その場合、Init() も Deinit() も呼ばれないことに注意。
+    //dwVersion == KMPMODULE_VERSION_NEW の場合、OpenFromStream の方を
+    //呼び出すようになる(正式版公開時には廃止予定)
     DWORD dwPluginVersion;
-    //�v���O�C���̃o�[�W����
-    //�Ή��g���q����������v���O�C�������������ꍇ�́A�������傫�����̂�D��I�Ɏg��
+    //プラグインのバージョン
+    //対応拡張子が競合するプラグインが見つかった場合は、数字が大きいものを優先的に使う
 
     const char  *pszCopyright;
-    //���쌠
-    //�o�[�W�������ł��̕����̕������\������
-    //NULL �ɂ��Ă��悢
+    //著作権
+    //バージョン情報でこの部分の文字列を表示する
+    //NULL にしてもよい
 
     const char  *pszDescription;
-    //����
-    //�o�[�W�������ł��̕����̕������\������
-    //NULL �ɂ��Ă��悢
+    //説明
+    //バージョン情報でこの部分の文字列を表示する
+    //NULL にしてもよい
 
     const char  **ppszSupportExts;
-    //�Ή��g���q�̕�����̔z��(�s���I�h�܂�)
-    //NULL �ŏI���悤�ɂ���
-    //��FppszSupportExts = {".mp1", ".mp2", ".mp3", "rmp", NULL};
+    //対応拡張子の文字列の配列(ピリオド含む)
+    //NULL で終わるようにする
+    //例：ppszSupportExts = {".mp1", ".mp2", ".mp3", "rmp", NULL};
     //
-    //ppszSupportExts == {NULL} (ppszSupportExts == NULL �͕s�j�ŁA���� Init �� Deinit
-    //�� �� NULL �̏ꍇ�͏풓�v���O�C���Ƃ��Ĉ����AKbMedia Player �����쒆�͏�Ƀ��[�h
-    //���ꂽ�܂܂ɂȂ�i������̋@�\�j
-    //�풓�v���O�C���Ƃ��Ă̓���� Init �ďo�����ɊJ�n���ADeinit �ďo�����ɏI�����邱�ƁB
-    //�iLoadLibrary ���ɓ���J�n�AFreeLibrary ���ɓ���I���͕s�j
+    //ppszSupportExts == {NULL} (ppszSupportExts == NULL は不可）で、かつ Init と Deinit
+    //が 非 NULL の場合は常駐プラグインとして扱われ、KbMedia Player が動作中は常にロード
+    //されたままになる（非公式の機能）
+    //常駐プラグインとしての動作は Init 呼出し時に開始し、Deinit 呼出し時に終了すること。
+    //（LoadLibrary 時に動作開始、FreeLibrary 時に動作終了は不可）
     //
-    //��L�ȊO�őΉ��g���q���P���Ȃ��ꍇ�A�s���ȃv���O�C���ƌ��Ȃ���AKbMedia Player
-    //�ɂ���Ē����� FreeLibrary �����B
-    //���̏ꍇ�� Init() �� Deinit() ���Ă΂�Ȃ����Ƃɒ��ӁB
+    //上記以外で対応拡張子が１つもない場合、不正なプラグインと見なされ、KbMedia Player
+    //によって直ちに FreeLibrary される。
+    //その場合は Init() も Deinit() も呼ばれないことに注意。
 
     DWORD dwReentrant;
-    //�����t�@�C���̓����Đ����\�ȏꍇ�� 1, �s�\�ȏꍇ�� 0
-    //Open �̖߂�l�� HKMP ���Q�ȏ㓯���Ɏ��ĂȂ��ꍇ�� 0 �ɂ���
-    //���ʂȎ���Ȃ�����A�o���邾�� dwReentrant == 1 �ƂȂ�悤�Ɏ�������ׂ��ł���
-    //���̒l�� 0 �̏ꍇ�A�Q�ڈȍ~�̃t�@�C���̓v���C���[�{�̂Ƃ͕� EXE ���o�R���ĊJ��
-    //�悤�ɂȂ�B
-    //���炩�̗��R�ɂ��A��Ƀv���C���[�{�̂Ƃ͕� EXE �Ńt�@�C�����J���悤�ɂ������ꍇ
-    //�� dwReentrant == 0xFFFFFFFF �Ƃ��邱��
-    //�Ⴆ�΁Aaaa.kpi �� bbb.kpi �� ccc.dll �Ɉˑ����Accc.dll ���m�����G���g�����g�ł���
-    //�ꍇ�́Aaaa.kpi �� bbb.kpi �� dwReentrant == 0xFFFFFFFF �ɂȂ��Ă��������]�܂����B
+    //複数ファイルの同時再生が可能な場合は 1, 不可能な場合は 0
+    //Open の戻り値の HKMP を２つ以上同時に持てない場合に 0 にする
+    //特別な事情がない限り、出来るだけ dwReentrant == 1 となるように実装するべきである
+    //この値が 0 の場合、２つ目以降のファイルはプレイヤー本体とは別 EXE を経由して開く
+    //ようになる。
+    //何らかの理由により、常にプレイヤー本体とは別 EXE でファイルを開くようにしたい場合
+    //は dwReentrant == 0xFFFFFFFF とすること
+    //例えば、aaa.kpi と bbb.kpi が ccc.dll に依存し、ccc.dll がノンリエントラントである
+    //場合は、aaa.kpi も bbb.kpi も dwReentrant == 0xFFFFFFFF になっていた方が望ましい。
 
     void  (WINAPI *Init)(void);
-    //�v���O�C���������BOpen �����Ăяo���O�� KbMedia Player �ɂ���Ĉ�x�����Ă΂��B
-    //�K�v�Ȃ��ꍇ�� NULL �ɂ��Ă��ǂ��B
-    //�������A�풓�v���O�C���i������̋@�\�j�̏ꍇ�͕K���������邱�ƁB
-    //Init �̌Ăяo���ŏ풓�v���O�C���𓮍�J�n����B
-    //LoadLibrary ���ɏ풓�v���O�C���𓮍�J�n���Ă͂����Ȃ��B
+    //プラグイン初期化。Open 等を呼び出す前に KbMedia Player によって一度だけ呼ばれる。
+    //必要ない場合は NULL にしても良い。
+    //ただし、常駐プラグイン（非公式の機能）の場合は必ず実装すること。
+    //Init の呼び出しで常駐プラグインを動作開始する。
+    //LoadLibrary 時に常駐プラグインを動作開始してはいけない。
 
     void  (WINAPI *Deinit)(void);
-    //�v���O�C���̌�n���BFreeLibrary �̒��O�Ɉ�x�����Ă΂��B
-    //Init() ����x���Ă΂��� Deinit() ���Ăԉ\�������邱�Ƃɒ��ӁB
-    //�K�v�Ȃ��ꍇ�� NULL �ɂ��Ă��ǂ��B
-    //�������A�풓�v���O�C���i������̋@�\�j�̏ꍇ�͕K���������邱�ƁB
-    //Deinit �̌Ăяo���ŏ풓�v���O�C���𓮍�I������
-    //FreeLibrary ���ɏ풓�v���O�C���𓮍�I�����Ă͂����Ȃ��B
+    //プラグインの後始末。FreeLibrary の直前に一度だけ呼ばれる。
+    //Init() を一度も呼ばずに Deinit() を呼ぶ可能性もあることに注意。
+    //必要ない場合は NULL にしても良い。
+    //ただし、常駐プラグイン（非公式の機能）の場合は必ず実装すること。
+    //Deinit の呼び出しで常駐プラグインを動作終了する
+    //FreeLibrary 時に常駐プラグインを動作終了してはいけない。
 
     HKMP (WINAPI *Open)(const char *cszFileName, SOUNDINFO *pInfo);
-    //�t�@�C�����J���B�K���������邱�ƁB
-    //�G���[�̏ꍇ�� NULL ��Ԃ��B
-    //�G���[�łȂ��ꍇ�� pInfo �ɓK�؂ȏ������邱�ƁB�K�؂ȏ�񂪓�����
-    //���Ȃ��ꍇ�idwBitsPerSample �� 0 �Ȃǁj�� KbMedia Player �ɂ���Ē����� Close
-    //���Ă΂��B
-    //Open �ɓn���ꂽ pInfo->dwSampleRate/dwBitsPerSample/dwChannels �̊e�l�� 0 �ȊO��
-    //�ꍇ�A�\�Ȃ炻��ɏ]�����`���i�܂��͍ł��߂��`���j�Ńt�@�C�����J���悤�ɂ��邱�ƁB
-    //�i�Ⴆ�� pInfo->dwBitsPerSample == -64(64bit float) �ɂȂ��Ă���ꍇ�A�\�Ȃ�
-    //  64bit float �ŁA64bit float ���s�\�ł� 32bit int �Ȃ�Ή����Ă���Ȃ� 32bit int
-    //  �ŕԂ��Ȃǁj
-    //�ʎq���r�b�g���� 2.51beta15 �ȍ~�͏�� 64bit float �ŗv��������悤�ɂȂ��Ă���B
-    //�Ή��o����͈͓��ōő�̂��̂�Ԃ��悤�ɂ��邱�ƁB�\�Ȃ�N���b�s���O�̏������s�v��
-    //64bit float �� 32bit float ���]�܂����B
-    //�{�̂͏�ɓ����ň�U 64bit float �ɕϊ�����B64bit float �ŏo�͏o����̂ł����
-    //�ϊ��̕K�v���Ȃ��Ȃ�A�ł������I�ƂȂ�B
-    //������ƌ����Ė������� 64bit float �ł̏o�͂ɑΉ�����K�v�͂Ȃ��A�Ή��o����ő��
-    //�r�b�g�����ǂꂩ�P�����ɍi�荞�߂Ηǂ�
-    //�����̃r�b�g���ɑΉ���������v���O�C���J�����̎�Ԃ����Ȃ����ł���B
+    //ファイルを開く。必ず実装すること。
+    //エラーの場合は NULL を返す。
+    //エラーでない場合は pInfo に適切な情報を入れること。適切な情報が入って
+    //いない場合（dwBitsPerSample が 0 など）は KbMedia Player によって直ちに Close
+    //が呼ばれる。
+    //Open に渡された pInfo->dwSampleRate/dwBitsPerSample/dwChannels の各値が 0 以外の
+    //場合、可能ならそれに従った形式（または最も近い形式）でファイルを開くようにすること。
+    //（例えば pInfo->dwBitsPerSample == -64(64bit float) になっている場合、可能なら
+    //  64bit float で、64bit float が不可能でも 32bit int なら対応しているなら 32bit int
+    //  で返すなど）
+    //量子化ビット数は 2.51beta15 以降は常に 64bit float で要求が来るようになっている。
+    //対応出来る範囲内で最大のものを返すようにすること。可能ならクリッピングの処理が不要な
+    //64bit float か 32bit float が望ましい。
+    //本体は常に内部で一旦 64bit float に変換する。64bit float で出力出来るのであれば
+    //変換の必要がなくなり、最も効率的となる。
+    //だからと言って無理して 64bit float での出力に対応する必要はなく、対応出来る最大の
+    //ビット数をどれか１つだけに絞り込めば良い
+    //複数のビット数に対応するよりもプラグイン開発時の手間も少ない筈である。
 
     HKMP (WINAPI *OpenFromBuffer)(const BYTE *Buffer, DWORD dwSize, SOUNDINFO *pInfo);
-    //���g�p�BNULL �ɂ��邱�ƁB�� NULL �ł��G���[�ɂ͂Ȃ�Ȃ����A�g�p����Ȃ��B
+    //未使用。NULL にすること。非 NULL でもエラーにはならないが、使用されない。
     //
     void   (WINAPI *Close)(HKMP hKMP);
-    //�n���h�������B�K���������邱�ƁB
+    //ハンドルを閉じる。必ず実装すること。
 
     DWORD  (WINAPI *Render)(HKMP hKMP, BYTE* Buffer, DWORD dwSize);
-    //Buffer �� PCM ������B�K���������邱�ƁB
-    //dwSize �� Buffer �̃T�C�Y�̃o�C�g���B�i�T���v�����ł͂Ȃ��j
-    //�߂�l�� Buffer �ɏ������񂾃o�C�g���B�i�T���v�����ł͂Ȃ��j
-    //dwSize ��菬�����l��Ԃ����牉�t�I���B
-    //dwSize �� SOUNDINFO::dwUnitRender �̒l���n�����B
-    //SOUNDINFO::dwUnitRender == 0 �̏ꍇ�� dwSize �ɂ͔C�ӂ̒l���n�����B
-    //�idwSize �̓T���v��������̃o�C�g���̔{���ł��邱�Ƃ��ۏ؂���Ă���j
+    //Buffer に PCM を入れる。必ず実装すること。
+    //dwSize は Buffer のサイズのバイト数。（サンプル数ではない）
+    //戻り値は Buffer に書き込んだバイト数。（サンプル数ではない）
+    //dwSize より小さい値を返したら演奏終了。
+    //dwSize は SOUNDINFO::dwUnitRender の値が渡される。
+    //SOUNDINFO::dwUnitRender == 0 の場合は dwSize には任意の値が渡される。
+    //（dwSize はサンプルあたりのバイト数の倍数であることが保証されている）
 
     DWORD  (WINAPI *SetPosition)(HKMP hKMP, DWORD dwPos);
-    //�V�[�N�B�K���������邱�ƁB
-    //dwPos �̓V�[�N��̍Đ��ʒu�B�߂�l�̓V�[�N��̍Đ��ʒu�B�P�ʂ̓~���b�B
-    //dwPos �Ɩ߂�l�͊��S�Ɉ�v����K�v�͂Ȃ��B�߂�l�Ɩ{���̍Đ��ʒu��
-    //�덷���傫���Ȃ�i�̎��Ƃ̓����Đ����Ɏx����������j�ꍇ�� Open ����
-    //SOUNDINFO �� dwSeekable �� 0 �ɂ��Ă������ƁB�덷���Ȃ����A�����Ă�
-    //���ɏ������ꍇ�� dwSeekable �� 1 �ɂ��Ă������ƁB�߂�l�����m�Ȃ�
-    //�΁AdwPos �Ɩ߂�l�̍����傫���Ă� dwSeekable=1 �Ƃ��ėǂ��B
-    //�������A���ۂ̃V�[�N��ʒu�� dwPos ������ɂȂ邱�Ƃ͔����邱�ƁB
-    //�iCueSheet �Đ����ɖ�肪�N����₷���j
+    //シーク。必ず実装すること。
+    //dwPos はシーク先の再生位置。戻り値はシーク後の再生位置。単位はミリ秒。
+    //dwPos と戻り値は完全に一致する必要はない。戻り値と本当の再生位置の
+    //誤差が大きくなる（歌詞との同期再生時に支障をきたす）場合は Open 時に
+    //SOUNDINFO の dwSeekable を 0 にしておくこと。誤差がないか、あっても
+    //非常に小さい場合は dwSeekable を 1 にしておくこと。戻り値が正確なら
+    //ば、dwPos と戻り値の差が大きくても dwSeekable=1 として良い。
+    //ただし、実際のシーク先位置が dwPos より後方になることは避けること。
+    //（CueSheet 再生時に問題が起こりやすい）
     //
-    //�V�[�N�ɑS���Ή����Ȃ��ꍇ�́A�擪�ʒu�ɖ߂��� 0 ��Ԃ����ƁB
+    //シークに全く対応しない場合は、先頭位置に戻して 0 を返すこと。
     //
-    //�P�t�@�C�������ȁiSOUNDINFO::dwReserved2 == 1�j�̏ꍇ�A���̊֐��őI��
-    //���邱�ƂɂȂ�B�Ȕԍ��� 1 �x�[�X�i�Ȕԍ� 0 �͑��݂��Ȃ��j�ŁAdwPos
-    //�ɂ́A�Ȕԍ��� 1000 �{�����l������B�Ⴆ�� 5 �Ԗڂ̋Ȃɐ؂�ւ���ꍇ
-    //�� dwPos == 5000 �ƂȂ�B
-    //�؂�ւ���̍Đ��ʒu�͐擪�ɖ߂��� 0 ��Ԃ����ƁB
-    //�������AdwPos == 0 �̏ꍇ�͋Ȃ�؂�ւ����ɍĐ��ʒu��擪�ɖ߂����ƁB
-    //SetPosition ����x���Ă΂�Ă��Ȃ���Ԃł� 1 �Ȗڂ��I������Ă���悤��
-    //���邱�ƁB
-    //�؂�ւ��Ɠ����ɃV�[�N���邱�Ƃ͏o���Ȃ��B�i�ʖڂȎd�l�ŃX�~�}�Z���j
+    //１ファイル複数曲（SOUNDINFO::dwReserved2 == 1）の場合、この関数で選曲
+    //することになる。曲番号は 1 ベース（曲番号 0 は存在しない）で、dwPos
+    //には、曲番号を 1000 倍した値が入る。例えば 5 番目の曲に切り替える場合
+    //は dwPos == 5000 となる。
+    //切り替え後の再生位置は先頭に戻して 0 を返すこと。
+    //ただし、dwPos == 0 の場合は曲を切り替えずに再生位置を先頭に戻すこと。
+    //SetPosition が一度も呼ばれていない状態では 1 曲目が選択されているように
+    //すること。
+    //切り替えと同時にシークすることは出来ない。（駄目な仕様でスミマセン）
 
 }KMPMODULE;
 
 typedef KMPMODULE* (WINAPI *pfnGetKMPModule)(void);
-//KMPMODULE* WINAPI kmp_GetTestModule(void);//�G�N�X�|�[�g����֐���
+//KMPMODULE* WINAPI kmp_GetTestModule(void);//エクスポートする関数名
 //
-//KMPMODULE �\���̂ւ̃|�C���^��Ԃ��B�K���G�N�X�|�[�g���邱�ƁB
-//���̊֐��̓v���O�C���� LoadLibrary ����Ă��� FreeLibrary �����܂ł̊Ԃ�
-//KbMedia Player �{�̂���͂P�񂾂������Ă΂�Ȃ��B
-//���̊֐����Ԃ��� KMPMODULE �\���̂̃f�[�^�����o�́AFreeLibrary �����܂�
-//�ύX���Ă͂����Ȃ��B
-//�]���āA�Ⴆ�ΑΉ��g���q��ݒ�ɂ���ĕύX�����悤�ɂ������ꍇ�A�Ή��g���q
-//�̕ύX�� KbMedia Player �{�̂ɔF�������̂́A�v���O�C���ă��[�h���Ƃ�������
-//�ɂȂ�B
+//KMPMODULE 構造体へのポインタを返す。必ずエクスポートすること。
+//この関数はプラグインが LoadLibrary されてから FreeLibrary されるまでの間に
+//KbMedia Player 本体からは１回だけしか呼ばれない。
+//この関数が返した KMPMODULE 構造体のデータメンバは、FreeLibrary されるまで
+//変更してはいけない。
+//従って、例えば対応拡張子を設定によって変更されるようにしたい場合、対応拡張子
+//の変更が KbMedia Player 本体に認識されるのは、プラグイン再ロード時ということ
+//になる。
 
 typedef DWORD (WINAPI *pfnKmpConfig)(HWND hWnd, DWORD dwVersion, DWORD dwReserved);
-//DWORD WINAPI kmp_Config(HWND hWnd, DWORD dwVersion, DWORD dwReserved);//�G�N�X�|�[�g����֐���
+//DWORD WINAPI kmp_Config(HWND hWnd, DWORD dwVersion, DWORD dwReserved);//エクスポートする関数名
 //
-//�v���O�C���̐ݒ���s���B���ɐݒ�̕K�v���Ȃ��ꍇ�̓G�N�X�|�[�g���Ȃ��Ă��ǂ��B
-//   �EdwVersion/dwReserved �Ƃ��� 0 ���n�����
-//   �E�߂�l�͌���ł� 0 ��Ԃ��̂�
-//   �EHKMP �̃C���X�^���X���Ƃ̐ݒ�͌���ł͖��Ή��i�Ή��̕K�v������̂��H�j
-//   �Ekmp_Config ���Ă΂��O�� KMPMODULE::Init() ���Ă΂��
-//   �Ekmp_Config ����߂��Ă��Ȃ��i�ݒ�_�C�A���O��\�����Ă���j��Ԃł́A
-//     �E��d�� kmp_Config ���Ă΂�邱�Ƃ͂Ȃ�
-//     �EKMPMODULE::Deinit() �͌Ă΂�Ȃ�
-//     �EFreeLibrary �͌Ă΂�Ȃ�
-//     �Ekmp_Config �Ăяo����A�_�C�A���O��\�������܂ܒ����Ƀ��^�[������ꍇ��
-//       ���̌���ł͂Ȃ��i���̏ꍇ�̓v���O�C�����œK�؂ɏ������邱�Ɓj
+//プラグインの設定を行う。特に設定の必要がない場合はエクスポートしなくても良い。
+//   ・dwVersion/dwReserved ともに 0 が渡される
+//   ・戻り値は現状では 0 を返すのみ
+//   ・HKMP のインスタンスごとの設定は現状では未対応（対応の必要があるのか？）
+//   ・kmp_Config が呼ばれる前に KMPMODULE::Init() が呼ばれる
+//   ・kmp_Config から戻っていない（設定ダイアログを表示している）状態では、
+//     ・二重に kmp_Config が呼ばれることはない
+//     ・KMPMODULE::Deinit() は呼ばれない
+//     ・FreeLibrary は呼ばれない
+//     ・kmp_Config 呼び出し後、ダイアログを表示したまま直ちにリターンする場合は
+//       この限りではない（その場合はプラグイン側で適切に処理すること）
 //
-//�ݒ�͂������� kmp_Config �̎������ʓ|�A�Ƃ����ꍇ�́A�v���O�C���Ɠ����ꏊ��
-//�v���O�C���Ɠ����� INI �t�@�C����u���΁AKbMedia Player �{�̂̃v���O�C���ݒ�
-//�_�C�A���O���� INI �t�@�C�����J���� INI �t�@�C���𒼐ڕҏW�o����悤�ɂȂ��Ă���B
+//設定はしたいが kmp_Config の実装が面倒、という場合は、プラグインと同じ場所に
+//プラグインと同名の INI ファイルを置けば、KbMedia Player 本体のプラグイン設定
+//ダイアログから INI ファイルを開いて INI ファイルを直接編集出来るようになっている。
 
-//�^�O�擾�p
-#define SZ_KMP_NAME_TITLE_A         "Title"       //�Ȗ�
-#define SZ_KMP_NAME_TITLE_W        L"Title"       //�Ȗ�
-#define SZ_KMP_NAME_TITLE        _T("Title")      //�Ȗ�
-//�A�[�e�B�X�g�֌W
-#define SZ_KMP_NAME_ARTIST_A        "Artist"      //�A�[�e�B�X�g
-#define SZ_KMP_NAME_ARTIST_W       L"Artist"      //�A�[�e�B�X�g
-#define SZ_KMP_NAME_ARTIST       _T("Artist")      //�A�[�e�B�X�g
+//タグ取得用
+#define SZ_KMP_NAME_TITLE_A         "Title"       //曲名
+#define SZ_KMP_NAME_TITLE_W        L"Title"       //曲名
+#define SZ_KMP_NAME_TITLE        _T("Title")      //曲名
+//アーティスト関係
+#define SZ_KMP_NAME_ARTIST_A        "Artist"      //アーティスト
+#define SZ_KMP_NAME_ARTIST_W       L"Artist"      //アーティスト
+#define SZ_KMP_NAME_ARTIST       _T("Artist")      //アーティスト
 
-#define SZ_KMP_NAME_ALBUMARTIST_A   "AlbumArtist" //�A���o���A�[�e�B�X�g
-#define SZ_KMP_NAME_ALBUMARTIST_W  L"AlbumArtist" //�A���o���A�[�e�B�X�g
-#define SZ_KMP_NAME_ALBUMARTIST  _T("AlbumArtist")//�A���o���A�[�e�B�X�g
+#define SZ_KMP_NAME_ALBUMARTIST_A   "AlbumArtist" //アルバムアーティスト
+#define SZ_KMP_NAME_ALBUMARTIST_W  L"AlbumArtist" //アルバムアーティスト
+#define SZ_KMP_NAME_ALBUMARTIST  _T("AlbumArtist")//アルバムアーティスト
 
-#define SZ_KMP_NAME_ORIGARTIST_A   "OriginalArtist" //�I���W�i���A�[�e�B�X�g
-#define SZ_KMP_NAME_ORIGARTIST_W  L"OriginalArtist" //�I���W�i���A�[�e�B�X�g
-#define SZ_KMP_NAME_ORIGARTIST  _T("OriginalArtist")//�I���W�i���A�[�e�B�X�g
+#define SZ_KMP_NAME_ORIGARTIST_A   "OriginalArtist" //オリジナルアーティスト
+#define SZ_KMP_NAME_ORIGARTIST_W  L"OriginalArtist" //オリジナルアーティスト
+#define SZ_KMP_NAME_ORIGARTIST  _T("OriginalArtist")//オリジナルアーティスト
 
-#define SZ_KMP_NAME_COPYRIGHT_A    "Copyright"   //���쌠
-#define SZ_KMP_NAME_COPYRIGHT_W   L"Copyright"   //���쌠
-#define SZ_KMP_NAME_COPYRIGHT   _T("Copyright")  //���쌠
+#define SZ_KMP_NAME_COPYRIGHT_A    "Copyright"   //著作権
+#define SZ_KMP_NAME_COPYRIGHT_W   L"Copyright"   //著作権
+#define SZ_KMP_NAME_COPYRIGHT   _T("Copyright")  //著作権
 
-#define SZ_KMP_NAME_LYRICIST_A     "Lyricist"    //��Ȏ�
-#define SZ_KMP_NAME_LYRICIST_W    L"Lyricist"    //�쎌��
-#define SZ_KMP_NAME_LYRICIST    _T("Lyricist")   //�쎌��
+#define SZ_KMP_NAME_LYRICIST_A     "Lyricist"    //作曲者
+#define SZ_KMP_NAME_LYRICIST_W    L"Lyricist"    //作詞者
+#define SZ_KMP_NAME_LYRICIST    _T("Lyricist")   //作詞者
 
-#define SZ_KMP_NAME_COMPOSER_A     "Composer"    //��Ȏ�
-#define SZ_KMP_NAME_COMPOSER_W    L"Composer"    //��Ȏ�
-#define SZ_KMP_NAME_COMPOSER    _T("Composer")   //��Ȏ�
+#define SZ_KMP_NAME_COMPOSER_A     "Composer"    //作曲者
+#define SZ_KMP_NAME_COMPOSER_W    L"Composer"    //作曲者
+#define SZ_KMP_NAME_COMPOSER    _T("Composer")   //作曲者
 
-#define SZ_KMP_NAME_PERFORMER_A    "Performer"   //���t��
-#define SZ_KMP_NAME_PERFORMER_W   L"Performer"   //���t��
-#define SZ_KMP_NAME_PERFORMER   _T("Performer")  //���t��
+#define SZ_KMP_NAME_PERFORMER_A    "Performer"   //演奏者
+#define SZ_KMP_NAME_PERFORMER_W   L"Performer"   //演奏者
+#define SZ_KMP_NAME_PERFORMER   _T("Performer")  //演奏者
 
-#define SZ_KMP_NAME_CONDUCTOR_A    "Conductor"   //�w����
-#define SZ_KMP_NAME_CONDUCTOR_W   L"Conductor"   //�w����
-#define SZ_KMP_NAME_CONDUCTOR   _T("Conductor")  //�w����
+#define SZ_KMP_NAME_CONDUCTOR_A    "Conductor"   //指揮者
+#define SZ_KMP_NAME_CONDUCTOR_W   L"Conductor"   //指揮者
+#define SZ_KMP_NAME_CONDUCTOR   _T("Conductor")  //指揮者
 
-//�A���o���֌W
-#define SZ_KMP_NAME_ALBUM_A        "Album"       //�A���o��
-#define SZ_KMP_NAME_ALBUM_W       L"Album"       //�A���o��
-#define SZ_KMP_NAME_ALBUM       _T("Album")      //�A���o��
+//アルバム関係
+#define SZ_KMP_NAME_ALBUM_A        "Album"       //アルバム
+#define SZ_KMP_NAME_ALBUM_W       L"Album"       //アルバム
+#define SZ_KMP_NAME_ALBUM       _T("Album")      //アルバム
 
-#define SZ_KMP_NAME_GAME_A         "Game"        //�Q�[����
-#define SZ_KMP_NAME_GAME_W        L"Game"        //�Q�[����
-#define SZ_KMP_NAME_GAME        _T("Game")       //�Q�[����
-//��
-#define SZ_KMP_NAME_GENRE_A        "Genre"       //�W������
-#define SZ_KMP_NAME_GENRE_W       L"Genre"       //�W������
-#define SZ_KMP_NAME_GENRE       _T("Genre")      //�W������
+#define SZ_KMP_NAME_GAME_A         "Game"        //ゲーム名
+#define SZ_KMP_NAME_GAME_W        L"Game"        //ゲーム名
+#define SZ_KMP_NAME_GAME        _T("Game")       //ゲーム名
+//他
+#define SZ_KMP_NAME_GENRE_A        "Genre"       //ジャンル
+#define SZ_KMP_NAME_GENRE_W       L"Genre"       //ジャンル
+#define SZ_KMP_NAME_GENRE       _T("Genre")      //ジャンル
 
-#define SZ_KMP_NAME_DATE_A         "Date"        //���t
-#define SZ_KMP_NAME_DATE_W        L"Date"        //���t
-#define SZ_KMP_NAME_DATE        _T("Date")       //���t
+#define SZ_KMP_NAME_DATE_A         "Date"        //日付
+#define SZ_KMP_NAME_DATE_W        L"Date"        //日付
+#define SZ_KMP_NAME_DATE        _T("Date")       //日付
 
-#define SZ_KMP_NAME_COMMENT_A      "Comment"     //�R�����g
-#define SZ_KMP_NAME_COMMENT_W     L"Comment"     //�R�����g
-#define SZ_KMP_NAME_COMMENT     _T("Comment")    //�R�����g
+#define SZ_KMP_NAME_COMMENT_A      "Comment"     //コメント
+#define SZ_KMP_NAME_COMMENT_W     L"Comment"     //コメント
+#define SZ_KMP_NAME_COMMENT     _T("Comment")    //コメント
 //track/disc
-#define SZ_KMP_NAME_TRACKNUMBER_A  "TrackNumber" //�g���b�N�ԍ�
-#define SZ_KMP_NAME_TRACKNUMBER_W L"TrackNumber" //�g���b�N�ԍ�
-#define SZ_KMP_NAME_TRACKNUMBER _T("TrackNumber")//�g���b�N�ԍ�
+#define SZ_KMP_NAME_TRACKNUMBER_A  "TrackNumber" //トラック番号
+#define SZ_KMP_NAME_TRACKNUMBER_W L"TrackNumber" //トラック番号
+#define SZ_KMP_NAME_TRACKNUMBER _T("TrackNumber")//トラック番号
 
-#define SZ_KMP_NAME_TRACKTOTAL_A   "TrackTotal"  //�g���b�N��
-#define SZ_KMP_NAME_TRACKTOTAL_W  L"TrackTotal"  //�g���b�N��
-#define SZ_KMP_NAME_TRACKTOTAL  _T("TrackTotal") //�g���b�N��
+#define SZ_KMP_NAME_TRACKTOTAL_A   "TrackTotal"  //トラック数
+#define SZ_KMP_NAME_TRACKTOTAL_W  L"TrackTotal"  //トラック数
+#define SZ_KMP_NAME_TRACKTOTAL  _T("TrackTotal") //トラック数
 
-#define SZ_KMP_NAME_DISCNUMBER_A   "DiscNumber"  //�f�B�X�N�ԍ�
-#define SZ_KMP_NAME_DISCNUMBER_W  L"DiscNumber"  //�f�B�X�N�ԍ�
-#define SZ_KMP_NAME_DISCNUMBER  _T("DiscNumber") //�f�B�X�N�ԍ�
+#define SZ_KMP_NAME_DISCNUMBER_A   "DiscNumber"  //ディスク番号
+#define SZ_KMP_NAME_DISCNUMBER_W  L"DiscNumber"  //ディスク番号
+#define SZ_KMP_NAME_DISCNUMBER  _T("DiscNumber") //ディスク番号
 
-#define SZ_KMP_NAME_DISCTOTAL_A    "DiscTotal"   //�f�B�X�N��
-#define SZ_KMP_NAME_DISCTOTAL_W   L"DiscTotal"   //�f�B�X�N��
-#define SZ_KMP_NAME_DISCTOTAL   _T("DiscTotal")  //�f�B�X�N��
+#define SZ_KMP_NAME_DISCTOTAL_A    "DiscTotal"   //ディスク数
+#define SZ_KMP_NAME_DISCTOTAL_W   L"DiscTotal"   //ディスク数
+#define SZ_KMP_NAME_DISCTOTAL   _T("DiscTotal")  //ディスク数
 
-#define SZ_KMP_NAME_DISCID_A       "DiscId"      //�f�B�X�NID
-#define SZ_KMP_NAME_DISCID_W      L"DiscId"      //�f�B�X�NID
-#define SZ_KMP_NAME_DISCID      _T("DiscId")     //�f�B�X�NID
+#define SZ_KMP_NAME_DISCID_A       "DiscId"      //ディスクID
+#define SZ_KMP_NAME_DISCID_W      L"DiscId"      //ディスクID
+#define SZ_KMP_NAME_DISCID      _T("DiscId")     //ディスクID
 //
-#define SZ_KMP_NAME_ENCODED_BY_A   "Encoded By"  //Encoded By(ID3v2 �� TENC)
-#define SZ_KMP_NAME_ENCODED_BY_W  L"Encoded By"  //Encoded By(ID3v2 �� TENC)
-#define SZ_KMP_NAME_ENCODED_BY  _T("Encoded By")  //Encoded By(ID3v2 �� TENC)
+#define SZ_KMP_NAME_ENCODED_BY_A   "Encoded By"  //Encoded By(ID3v2 の TENC)
+#define SZ_KMP_NAME_ENCODED_BY_W  L"Encoded By"  //Encoded By(ID3v2 の TENC)
+#define SZ_KMP_NAME_ENCODED_BY  _T("Encoded By")  //Encoded By(ID3v2 の TENC)
 
-#define SZ_KMP_NAME_ENCODING_SETTINGS_A  "Encoding Settings" //Encoding settings(ID3v2 ��TSSE)
-#define SZ_KMP_NAME_ENCODING_SETTINGS_W L"Encoding Settings" //Encoding settings(ID3v2 ��TSSE)
-#define SZ_KMP_NAME_ENCODING_SETTINGS _T("Encoding Settings")//Encoding settings(ID3v2 ��TSSE)
+#define SZ_KMP_NAME_ENCODING_SETTINGS_A  "Encoding Settings" //Encoding settings(ID3v2 のTSSE)
+#define SZ_KMP_NAME_ENCODING_SETTINGS_W L"Encoding Settings" //Encoding settings(ID3v2 のTSSE)
+#define SZ_KMP_NAME_ENCODING_SETTINGS _T("Encoding Settings")//Encoding settings(ID3v2 のTSSE)
 
-#define SZ_KMP_NAME_BITRATE_A      "Bitrate"     //�r�b�g���[�g
-#define SZ_KMP_NAME_BITRATE_W     L"Bitrate"     //�r�b�g���[�g
-#define SZ_KMP_NAME_BITRATE     _T("Bitrate")    //�r�b�g���[�g
+#define SZ_KMP_NAME_BITRATE_A      "Bitrate"     //ビットレート
+#define SZ_KMP_NAME_BITRATE_W     L"Bitrate"     //ビットレート
+#define SZ_KMP_NAME_BITRATE     _T("Bitrate")    //ビットレート
 
-#define SZ_KMP_NAME_REPLAYGAIN_TRACKGAIN_A  "Replaygain_Track_Gain" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_TRACKGAIN_W L"Replaygain_Track_Gain" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_TRACKGAIN _T("Replaygain_Track_Gain")//���v���C�Q�C��
+#define SZ_KMP_NAME_REPLAYGAIN_TRACKGAIN_A  "Replaygain_Track_Gain" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_TRACKGAIN_W L"Replaygain_Track_Gain" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_TRACKGAIN _T("Replaygain_Track_Gain")//リプレイゲイン
 
-#define SZ_KMP_NAME_REPLAYGAIN_TRACKPEAK_A  "Replaygain_Track_Peak" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_TRACKPEAK_W L"Replaygain_Track_Peak" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_TRACKPEAK _T("Replaygain_Track_Peak")//���v���C�Q�C��
+#define SZ_KMP_NAME_REPLAYGAIN_TRACKPEAK_A  "Replaygain_Track_Peak" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_TRACKPEAK_W L"Replaygain_Track_Peak" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_TRACKPEAK _T("Replaygain_Track_Peak")//リプレイゲイン
 
-#define SZ_KMP_NAME_REPLAYGAIN_ALBUMGAIN_A  "Replaygain_Album_Gain" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_ALBUMGAIN_W L"Replaygain_Album_Gain" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_ALBUMGAIN _T("Replaygain_Album_Gain")//���v���C�Q�C��
+#define SZ_KMP_NAME_REPLAYGAIN_ALBUMGAIN_A  "Replaygain_Album_Gain" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_ALBUMGAIN_W L"Replaygain_Album_Gain" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_ALBUMGAIN _T("Replaygain_Album_Gain")//リプレイゲイン
 
-#define SZ_KMP_NAME_REPLAYGAIN_ALBUMPEAK_A  "Replaygain_Album_Peak" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_ALBUMPEAK_W L"Replaygain_Album_Peak" //���v���C�Q�C��
-#define SZ_KMP_NAME_REPLAYGAIN_ALBUMPEAK _T("Replaygain_Album_Peak")//���v���C�Q�C��
+#define SZ_KMP_NAME_REPLAYGAIN_ALBUMPEAK_A  "Replaygain_Album_Peak" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_ALBUMPEAK_W L"Replaygain_Album_Peak" //リプレイゲイン
+#define SZ_KMP_NAME_REPLAYGAIN_ALBUMPEAK _T("Replaygain_Album_Peak")//リプレイゲイン
 
 class IKmpTagInfo
 {
@@ -377,14 +377,14 @@ public:
 };
 
 typedef BOOL (WINAPI *pfnGetTagInfo)(const char *cszFileName, IKmpTagInfo *pInfo);
-//BOOL WINAPI kmp_GetTestTagInfo(const char *cszFileName, IKmpTagInfo *pInfo);//�G�N�X�|�[�g����֐���
-//kmp_GetTestTagInfo �͑Ή��v���O�C�������Ȃ��A�p�t�H�[�}���X������ʂ���������
-//�p�~����邩������Ȃ�
+//BOOL WINAPI kmp_GetTestTagInfo(const char *cszFileName, IKmpTagInfo *pInfo);//エクスポートする関数名
+//kmp_GetTestTagInfo は対応プラグインが少なく、パフォーマンス上も無駄が多いため
+//廃止されるかもしれない
 //
-//�^�C�g�����̃^�O����r�b�g���[�g���̏��� IKmpTagInfo �ɒʒm����
-//�G�N�X�|�[�g����Ă��Ȃ��ꍇ�͖{�̂̃^�O�擾���[�`���Ń^�O�����擾����
+//タイトル等のタグ情報やビットレート等の情報を IKmpTagInfo に通知する
+//エクスポートされていない場合は本体のタグ取得ルーチンでタグ情報を取得する
 //
-//���̂悤�Ɏ�������
+//次のように実装する
 //BOOL WINAPI kmp_GetTestTagInfo(const char *cszFileName, IKmpTagInfo *pInfo)
 //{
 //    char  *szTitle;   //Ansi
@@ -399,46 +399,46 @@ typedef BOOL (WINAPI *pfnGetTagInfo)(const char *cszFileName, IKmpTagInfo *pInfo
 //    return TRUE;
 //}
 //
-//SetValueA/W/U8 �͂��ꂼ�� Ansi/Unicode/Utf8
+//SetValueA/W/U8 はそれぞれ Ansi/Unicode/Utf8
 //
-//cszName �͑啶���Ə���������ʂ��Ȃ�
-//cszName �ň�����̂� KMP_TAGINFO_NAME_XXXX �����A����`�̕�������n�����Ƃ��o����B
-//����`�̕������n���ƁA�u�h�L�������g�v���� <> �Ŋ���ꂽ�`�Ŗ��O�ƒl���\�������B
-//���̏ꍇ�̕\���̏����� SetValueX �œn���ꂽ�����ɂȂ�AcszName �͓n���ꂽ������
-//���̂��̂ɂȂ�B(���� cszName �� 2��ȏ�n���Ă� 2��ڈȍ~�͖��������)
+//cszName は大文字と小文字を区別しない
+//cszName で扱えるのは KMP_TAGINFO_NAME_XXXX だが、未定義の文字列も渡すことが出来る。
+//未定義の文字列を渡すと、「ドキュメント」部に <> で括られた形で名前と値が表示される。
+//その場合の表示の順序は SetValueX で渡された順序になり、cszName は渡された文字列
+//そのものになる。(同じ cszName を 2回以上渡しても 2回目以降は無視される)
 //
-//SetValueA(ANSI) �� SetValueW(UNICODE) �� SetValueU8(UTF8) �͍��݂��Ďg�p�\
-//3 ��ޗp�ӂ����̂̓v���O�C�����ł̕����R�[�h�̕ϊ��̎�Ԃ��Ȃ�����
-//���� Value �l���킴�킴 3 ��ނ̕����R�[�h�Ŏw�肵�ČĂԕK�v�͂Ȃ�
-//    pInfo->aSetValueA(SZ_KMP_TAGINFO_NAME_TITLE, "�����Ƃ�");
-//    pInfo->aSetValueW(SZ_KMP_TAGINFO_NAME_TITLE, L"�����Ƃ�");
-//    pInfo->aSetValueU8(SZ_KMP_TAGINFO_NAME_TITLE, (utf8��)"�����Ƃ�");
-//�̂悤�ȌĂѕ��͕s�v
+//SetValueA(ANSI) と SetValueW(UNICODE) と SetValueU8(UTF8) は混在して使用可能
+//3 種類用意したのはプラグイン側での文字コードの変換の手間を省くため
+//同じ Value 値をわざわざ 3 種類の文字コードで指定して呼ぶ必要はない
+//    pInfo->aSetValueA(SZ_KMP_TAGINFO_NAME_TITLE, "たいとる");
+//    pInfo->aSetValueW(SZ_KMP_TAGINFO_NAME_TITLE, L"たいとる");
+//    pInfo->aSetValueU8(SZ_KMP_TAGINFO_NAME_TITLE, (utf8の)"たいとる");
+//のような呼び方は不要
 //
-//KbMedia Player �́A�ȉ��̏����Ń^�O�����擾����B
+//KbMedia Player は、以下の順序でタグ情報を取得する。
 //
-//1.���ۂ̍Đ��Ɏg���v���O�C������擾
-//2.KbMedia Player ���g���擾
-//1 > 2 �̏��ɏ����擾����(1�̕�����)
+//1.実際の再生に使うプラグインから取得
+//2.KbMedia Player 自身が取得
+//1 > 2 の順に情報を取得する(1の方が先)
 //
-//�Ⴆ�΃r�b�g���[�g�ȊO�̏��擾�� KbMedia Player ���g��
-//�C��������΁A�r�b�g���[�g��񂾂���ʒm����Ηǂ��B
+//例えばビットレート以外の情報取得は KbMedia Player 自身に
+//任せたければ、ビットレート情報だけを通知すれば良い。
 //
-//�t�ɑS�Ă̏��擾�����g�ōs���A�{�̂̎擾���ȗ����������ꍇ�́A
-//��ԍŏ��� aSetValueA(NULL, NULL) ���Ăяo��(SetValueW/SetValueU8 �ł���)
-//��F
-//    pInfo->aSetValueA(NULL, NULL);//SetValueW(NULL, NULL)/SetValueU8(NULL, NULL)�� OK
+//逆に全ての情報取得を自身で行い、本体の取得を省略させたい場合は、
+//一番最初に aSetValueA(NULL, NULL) を呼び出す(SetValueW/SetValueU8 でも可)
+//例：
+//    pInfo->aSetValueA(NULL, NULL);//SetValueW(NULL, NULL)/SetValueU8(NULL, NULL)も OK
 //    pInfo->aSetValueA("bitrate", "128kbps");
-//    pInfo->aSetValueA("title", "�^�C�g��");
-//���̏ꍇ�A2 �ŃA�[�e�B�X�g��񓙂��擾�o���Ă��A1 �Ŏ擾������񂵂��\�����Ȃ��B
+//    pInfo->aSetValueA("title", "タイトル");
+//この場合、2 でアーティスト情報等を取得出来ても、1 で取得した情報しか表示しない。
 //
-//SetValue(NULL, NULL) ���Ȃ��ꍇ�AcszName ���w�肳��ĂȂ����̂Ɋւ��Ă� 2 �Ŏ擾
-//�o����Ε\������B��L�̗�ł́A�A�[�e�B�X�g���� 2 �œ����ꍇ�̓A�[�e�B�X�g���
-//���\������B
+//SetValue(NULL, NULL) がない場合、cszName が指定されてないものに関しては 2 で取得
+//出来れば表示する。上記の例では、アーティスト情報を 2 で得た場合はアーティスト情報
+//も表示する。
 //
-//1,2 �œ��� cszName �ɑ΂��ĈقȂ� cszValue ������ꂽ�ꍇ�A1 �Ŏ擾���������̗p����
-//�]���āA
+//1,2 で同じ cszName に対して異なる cszValue が得られた場合、1 で取得した方を採用する
+//従って、
 //    pInfo->SetValueA("title", "");
-//�̂悤�ɌĂяo���ƁA2 �ňقȂ�^�C�g���𓾂Ă��^�C�g���� "" �ƂȂ�B
+//のように呼び出すと、2 で異なるタイトルを得てもタイトルは "" となる。
 //
 #endif

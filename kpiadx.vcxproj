@@ -107,6 +107,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)kpiadx.kpi</OutputFile>
@@ -133,6 +134,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)kpiadx.kpi</OutputFile>
@@ -156,6 +158,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)kpiadx.kpi</OutputFile>
@@ -181,6 +184,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)kpiadx.kpi</OutputFile>
@@ -219,6 +223,7 @@
     <ClInclude Include="KpiADXDecoder.h" />
     <ClInclude Include="KpiADXDecoderModule.h" />
     <ClInclude Include="kpiadx.h" />
+    <ClInclude Include="kpi_mingw_uuid.h" />
     <ClInclude Include="kpisdk\kmp_pi.h" />
     <ClInclude Include="kpisdk\kpi.h" />
     <ClInclude Include="kpisdk\kpi_decoder.h" />

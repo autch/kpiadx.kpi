@@ -1,33 +1,33 @@
-#pragma once
+ï»¿#pragma once
 #ifndef kpi_implH
 #define kpi_implH
 
 #include "kpi.h"
 ///////////////////////////////////////////////////////////////////////////////
-//IKpiXXX ‚Ì QueryInterface/AddRef/Release
-//‹y‚ÑÀ‘•‚ª•K{‚Å‚Í‚È‚¢ƒƒ\ƒbƒh‚ÌƒfƒtƒHƒ‹ƒg‚Ì“®ì‚ğÀ‘•‚µ‚½ƒNƒ‰ƒXŒQ
-//ƒvƒ‰ƒOƒCƒ“ŠJ”­A–Ê“|‚È‚ç‚±‚ê‚ç‚ÌƒNƒ‰ƒX‚©‚ç”h¶‚³‚¹‚ê‚Î—Ç‚¢‚ªA•K{‚Å‚Í‚È‚¢
+//IKpiXXX ã® QueryInterface/AddRef/Release
+//åŠã³å®Ÿè£…ãŒå¿…é ˆã§ã¯ãªã„ãƒ¡ã‚½ãƒƒãƒ‰ã®ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã®å‹•ä½œã‚’å®Ÿè£…ã—ãŸã‚¯ãƒ©ã‚¹ç¾¤
+//ãƒ—ãƒ©ã‚°ã‚¤ãƒ³é–‹ç™ºæ™‚ã€é¢å€’ãªã‚‰ã“ã‚Œã‚‰ã®ã‚¯ãƒ©ã‚¹ã‹ã‚‰æ´¾ç”Ÿã•ã›ã‚Œã°è‰¯ã„ãŒã€å¿…é ˆã§ã¯ãªã„
 //
-//‚±‚±‚É‚È‚¢‚à‚Ì‚Å IKpiUnknown ‚Ì”h¶ƒNƒ‰ƒX‚ğÀ‘•‚·‚éê‡‚Í
+//ã“ã“ã«ãªã„ã‚‚ã®ã§ IKpiUnknown ã®æ´¾ç”Ÿã‚¯ãƒ©ã‚¹ã‚’å®Ÿè£…ã™ã‚‹å ´åˆã¯
 //
 //class CKpiUnArc : public KbKpiUnknwonImpl<IKpiUnArc>
 //{
 //};
-//‚Ü‚½‚Í
+//ã¾ãŸã¯
 //typedef KbKpiUnknwonImpl<IKpiUnArc> CKpiUnArc;
 //
 //class CKpiPlayer : public KbKpiUnknwonImpl<IKpiPlayer>
 //{
 //};
-//‚Ü‚½‚Í
+//ã¾ãŸã¯
 //typedef KbKpiUnknwonImpl<IKpiPlayer> CKpiPlayer;
 //
-//‚Ì‚æ‚¤‚É‚·‚ê‚Î QueryInterface ‚Æ AddRef/Release ‚¾‚¯‚Í©“®“I‚ÉÀ‘•‚³‚ê‚é
+//ã®ã‚ˆã†ã«ã™ã‚Œã° QueryInterface ã¨ AddRef/Release ã ã‘ã¯è‡ªå‹•çš„ã«å®Ÿè£…ã•ã‚Œã‚‹
 //
-//KbKpiFileImpl ˆÈŠO‚Í typedef ‚µ‚Ä‚¢‚é‚¾‚¯‚È‚Ì‚ÅA‘¼‚Ìƒƒ\ƒbƒh‚Í‘S‚ÄÀ‘•
-//‚·‚é•K—v‚ª‚ ‚éB
-class IKpiDecoder;      //kpi_decoder.h ‚ÉˆÚ“®‚µ‚½‚Ì‚Å‘O•ûéŒ¾‚µ‚Ä‚¨‚­
-class IKpiDecoderModule;//kpi_decoder.h ‚ÉˆÚ“®‚µ‚½‚Ì‚Å‘O•ûéŒ¾‚µ‚Ä‚¨‚­
+//KbKpiFileImpl ä»¥å¤–ã¯ typedef ã—ã¦ã„ã‚‹ã ã‘ãªã®ã§ã€ä»–ã®ãƒ¡ã‚½ãƒƒãƒ‰ã¯å…¨ã¦å®Ÿè£…
+//ã™ã‚‹å¿…è¦ãŒã‚ã‚‹ã€‚
+class IKpiDecoder;      //kpi_decoder.h ã«ç§»å‹•ã—ãŸã®ã§å‰æ–¹å®£è¨€ã—ã¦ãŠã
+class IKpiDecoderModule;//kpi_decoder.h ã«ç§»å‹•ã—ãŸã®ã§å‰æ–¹å®£è¨€ã—ã¦ãŠã
 ///////////////////////////////////////////////////////////////////////////////
 template<class T> class KbKpiUnknownImpl : public T
 {
@@ -36,7 +36,7 @@ protected:
     KbKpiUnknownImpl(void):m_cRef(1){}
     virtual ~KbKpiUnknownImpl(void){}
 public:
-    //IUnknown ”h¶
+    //IUnknown æ´¾ç”Ÿ
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject);
     ULONG   STDMETHODCALLTYPE AddRef(void);
     ULONG   STDMETHODCALLTYPE Release(void);
@@ -58,8 +58,8 @@ HRESULT WINAPI KbKpiUnknownImpl<T>::QueryInterface(REFIID riid,
     //else if(IsEqualGUID(riid, __uuidof(IUnknown))){
     //    *ppvObject = (IUnknown*)this;
     //}
-    //ªtypedef IUnknown IKpiUnknown;
-    //  IUnknown == IKpiUnknown ‚È‚Ì‚Å•K—v‚È‚µ
+    //â†‘typedef IUnknown IKpiUnknown;
+    //  IUnknown == IKpiUnknown ãªã®ã§å¿…è¦ãªã—
     else{
         *ppvObject = NULL;
         return E_NOINTERFACE;
@@ -85,18 +85,18 @@ ULONG WINAPI KbKpiUnknownImpl<T>::Release(void)
 }
 ///////////////////////////////////////////////////////////////////////////////
 class KbKpiFileImpl : public KbKpiUnknownImpl<IKpiFile>
-{//ƒfƒR[ƒ_ƒvƒ‰ƒOƒCƒ“‚Íg—p‚·‚é‚Ì‚İ
- //–{‘Ì(‚Ü‚½‚Íƒvƒ‰ƒOƒCƒ“‚ğg—p‚·‚éƒ\ƒtƒg)‚ªÀ‘•
- //ƒA[ƒJƒCƒuƒvƒ‰ƒOƒCƒ“‚Å‚àÀ‘•‚ª•K—v
+{//ãƒ‡ã‚³ãƒ¼ãƒ€ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã¯ä½¿ç”¨ã™ã‚‹ã®ã¿
+ //æœ¬ä½“(ã¾ãŸã¯ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã‚’ä½¿ç”¨ã™ã‚‹ã‚½ãƒ•ãƒˆ)ãŒå®Ÿè£…
+ //ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã§ã‚‚å®Ÿè£…ãŒå¿…è¦
 public:
-    //IKpiFile ”h¶
+    //IKpiFile æ´¾ç”Ÿ
     DWORD WINAPI GetFileName(wchar_t *pszName, DWORD dwSize){pszName[0] = 0;return 0;}
     BOOL  WINAPI GetRealFileW(const wchar_t **ppszFileName){*ppszFileName=NULL;return FALSE;}
     BOOL  WINAPI GetRealFileA(const char    **ppszFileName){*ppszFileName=NULL;return FALSE;}
     BOOL  WINAPI GetBuffer(const BYTE **ppBuffer, size_t *pstSize){*ppBuffer=NULL;*pstSize=0;return FALSE;}
     BOOL  WINAPI CreateClone(IKpiFile **ppFile){*ppFile=NULL;return FALSE;}
     BOOL  WINAPI Abort(void){return FALSE;}
-/*  ˆÈ‰º‚Í•K‚¸À‘•‚µ‚È‚¯‚ê‚Î‚È‚ç‚È‚¢
+/*  ä»¥ä¸‹ã¯å¿…ãšå®Ÿè£…ã—ãªã‘ã‚Œã°ãªã‚‰ãªã„
     DWORD  WINAPI Read(void *pBuffer, DWORD dwSize);
     UINT64 WINAPI Seek(INT64 i64Pos, DWORD dwOrigin);
     UINT64 WINAPI GetSize(void);
@@ -106,11 +106,11 @@ public:
 typedef KbKpiUnknownImpl<IKpiFolder> KbKpiFolderImpl;
 /*
 class KbKpiFolderImpl : public KbKpiUnknownImpl<IKpiFolder>
-{//–{‘Ì(‚Ü‚½‚Íƒvƒ‰ƒOƒCƒ“‚ğg—p‚·‚éƒ\ƒtƒg)‚ªÀ‘•
- //ƒfƒR[ƒ_ƒvƒ‰ƒOƒCƒ“AƒA[ƒJƒCƒuƒvƒ‰ƒOƒCƒ“‚Íg—p‚·‚é‚Ì‚İ‚ÅÀ‘••s—v
+{//æœ¬ä½“(ã¾ãŸã¯ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã‚’ä½¿ç”¨ã™ã‚‹ã‚½ãƒ•ãƒˆ)ãŒå®Ÿè£…
+ //ãƒ‡ã‚³ãƒ¼ãƒ€ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã€ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã¯ä½¿ç”¨ã™ã‚‹ã®ã¿ã§å®Ÿè£…ä¸è¦
 public:
-    IKpiFolder ”h¶
-    ˆÈ‰º‚Í•K‚¸À‘•‚µ‚È‚¯‚ê‚Î‚È‚ç‚È‚¢
+    IKpiFolder æ´¾ç”Ÿ
+    ä»¥ä¸‹ã¯å¿…ãšå®Ÿè£…ã—ãªã‘ã‚Œã°ãªã‚‰ãªã„
     DWORD WINAPI GetFolderName(wchar_t *pszName, DWORD dwSize);
     DWORD WINAPI EnumFiles(DWORD dwIndex, wchar_t *pszName, DWORD dwSize, DWORD dwLevel);
     BOOL  WINAPI OpenFile(const wchar_t* cszName, IKpiFile **ppFile);
@@ -119,10 +119,10 @@ public:
 */
 ///////////////////////////////////////////////////////////////////////////////
 class KbKpiNullFolder : public KbKpiFolderImpl
-{//À¿“I‚É‰½‚à‚µ‚È‚¢ IKpiFolder
- //–{‘Ì(‚Ü‚½‚Íƒvƒ‰ƒOƒCƒ“‚ğg—p‚·‚éƒ\ƒtƒg)‚Å•K—v(‚©‚à)
+{//å®Ÿè³ªçš„ã«ä½•ã‚‚ã—ãªã„ IKpiFolder
+ //æœ¬ä½“(ã¾ãŸã¯ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã‚’ä½¿ç”¨ã™ã‚‹ã‚½ãƒ•ãƒˆ)ã§å¿…è¦(ã‹ã‚‚)
 public:
-    //IKpiFolder ”h¶
+    //IKpiFolder æ´¾ç”Ÿ
     DWORD WINAPI GetFolderName(wchar_t *pszName, DWORD dwSize){pszName[0] = 0;return 0;}
     DWORD WINAPI EnumFiles(DWORD dwIndex, wchar_t *pszName, DWORD dwSize, DWORD dwLevel){pszName[0] = 0; return 0;}
     BOOL  WINAPI OpenFile(const wchar_t* cszName, IKpiFile **ppFile){*ppFile=NULL;return FALSE;}
@@ -132,70 +132,70 @@ public:
 typedef KbKpiUnknownImpl<IKpiDecoder> KbKpiDecoderImpl;
 /*
 class KbKpiDecoderImpl : public KbKpiUnknownImpl<IKpiDecoder>
-{//ƒfƒR[ƒ_ƒvƒ‰ƒOƒCƒ“‚ÅÀ‘•‚ª•K—v
+{//ãƒ‡ã‚³ãƒ¼ãƒ€ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã§å®Ÿè£…ãŒå¿…è¦
 public:
-    //IKpiDecoder ”h¶
-    //ˆÈ‰º‚Í•K‚¸À‘•‚µ‚È‚¯‚ê‚Î‚È‚ç‚È‚¢
-    DWORD  WINAPI Select(DWORD dwNumber,                    //‹È”Ô†
+    //IKpiDecoder æ´¾ç”Ÿ
+    //ä»¥ä¸‹ã¯å¿…ãšå®Ÿè£…ã—ãªã‘ã‚Œã°ãªã‚‰ãªã„
+    DWORD  WINAPI Select(DWORD dwNumber,                    //æ›²ç•ªå·
                          const KPI_MEDIAINFO **ppMediaInfo, //may be NULL
                          IKpiTagInfo *pTagInfo,             //may be NULL
-                         DWORD dwTagGetFlags);//‚Ç‚ÌƒtƒB[ƒ‹ƒh‚Ìƒ^ƒO‚ğæ“¾‚·‚é‚©‚Ìƒtƒ‰ƒO
+                         DWORD dwTagGetFlags);//ã©ã®ãƒ•ã‚£ãƒ¼ãƒ«ãƒ‰ã®ã‚¿ã‚°ã‚’å–å¾—ã™ã‚‹ã‹ã®ãƒ•ãƒ©ã‚°
     DWORD  WINAPI Render(BYTE *pBuffer, DWORD dwSizeSample);
     UINT64 WINAPI Seek(UINT64 qwPosSample, DWORD dwFlag);
     DWORD  WINAPI UpdateConfig(void *pvReserved){return 0;}
-    //UpdateConfig ‚Í‘½‚­‚Ìê‡À‘••s—v‚¾‚ªAŒã‚ÅÀ‘•‚µ‚½‚­‚È‚é
-    //‚©‚à‚µ‚ê‚È‚¢‚Ì‚ÅŠ¸‚¦‚Ä‚±‚±‚Å‚ÍÀ‘•‚µ‚È‚¢(•K—v‚È‚çƒRƒsƒy)
+    //UpdateConfig ã¯å¤šãã®å ´åˆå®Ÿè£…ä¸è¦ã ãŒã€å¾Œã§å®Ÿè£…ã—ãŸããªã‚‹
+    //ã‹ã‚‚ã—ã‚Œãªã„ã®ã§æ•¢ãˆã¦ã“ã“ã§ã¯å®Ÿè£…ã—ãªã„(å¿…è¦ãªã‚‰ã‚³ãƒ”ãƒš)
 };
 */
 ///////////////////////////////////////////////////////////////////////////////
 typedef KbKpiUnknownImpl<IKpiDecoderModule> KbKpiDecoderModuleImpl;
 /*
 class KbKpiDecoderModuleImpl : public KbKpiUnknownImpl<IKpiDecoderModule>
-{//ƒfƒR[ƒ_ƒvƒ‰ƒOƒCƒ“‚ÅÀ‘•‚ª•K—v
+{//ãƒ‡ã‚³ãƒ¼ãƒ€ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã§å®Ÿè£…ãŒå¿…è¦
 public:
-    //IKpiDecoderModule ”h¶
-    //ˆÈ‰º‚Í•K‚¸À‘•‚µ‚È‚¯‚ê‚Î‚È‚ç‚È‚¢
+    //IKpiDecoderModule æ´¾ç”Ÿ
+    //ä»¥ä¸‹ã¯å¿…ãšå®Ÿè£…ã—ãªã‘ã‚Œã°ãªã‚‰ãªã„
     void  WINAPI GetModuleInfo(const KPI_DECODER_MODULEINFO **ppInfo);
-    DWORD WINAPI Open(const KPI_MEDIAINFO *cpRequest,//Ä¶ü”g”“™‚Ì—v‹’l‚ªŠÜ‚Ü‚ê‚½ KPI_MEDIAINFO
-                              IKpiFile     *pFile,   //‰¹Šyƒf[ƒ^
-                              IKpiFolder   *pFolder, //‰¹Šyƒf[ƒ^‚ª‚ ‚éƒtƒHƒ‹ƒ_
+    DWORD WINAPI Open(const KPI_MEDIAINFO *cpRequest,//å†ç”Ÿå‘¨æ³¢æ•°ç­‰ã®è¦æ±‚å€¤ãŒå«ã¾ã‚ŒãŸ KPI_MEDIAINFO
+                              IKpiFile     *pFile,   //éŸ³æ¥½ãƒ‡ãƒ¼ã‚¿
+                              IKpiFolder   *pFolder, //éŸ³æ¥½ãƒ‡ãƒ¼ã‚¿ãŒã‚ã‚‹ãƒ•ã‚©ãƒ«ãƒ€
                               IKpiDecoder **ppDecoder);
     BOOL  WINAPI EnumConfig(IKpiConfigEnumerator *pEnumerator){return FALSE;}
-    DWORD WINAPI ApplyConfig(const wchar_t *cszSection,//ƒZƒNƒVƒ‡ƒ“–¼
-                             const wchar_t *cszKey,    //ƒL[–¼
-                             INT64  nValue, //•ÏXŒã‚Ì’l(BOOL/INT ‚Ìê‡)
-                             double dValue, //•ÏXŒã‚Ì’l(FLOAT ‚Ìê‡)
-                             const wchar_t *cszValue){//•ÏXŒã‚Ì’l(•¶š—ñ)
+    DWORD WINAPI ApplyConfig(const wchar_t *cszSection,//ã‚»ã‚¯ã‚·ãƒ§ãƒ³å
+                             const wchar_t *cszKey,    //ã‚­ãƒ¼å
+                             INT64  nValue, //å¤‰æ›´å¾Œã®å€¤(BOOL/INT ã®å ´åˆ)
+                             double dValue, //å¤‰æ›´å¾Œã®å€¤(FLOAT ã®å ´åˆ)
+                             const wchar_t *cszValue){//å¤‰æ›´å¾Œã®å€¤(æ–‡å­—åˆ—)
         return KPI_CFGRET_OK;
     }
-    //EnumConfig/ApplyConfig ‚Í‘½‚­‚Ìê‡À‘••s—v‚¾‚ªAŒã‚ÅÀ‘•‚µ‚½‚­‚È‚é
-    //‚©‚à‚µ‚ê‚È‚¢‚Ì‚ÅŠ¸‚¦‚Ä‚±‚±‚Å‚ÍÀ‘•‚µ‚È‚¢(•K—v‚È‚çƒRƒsƒy)
+    //EnumConfig/ApplyConfig ã¯å¤šãã®å ´åˆå®Ÿè£…ä¸è¦ã ãŒã€å¾Œã§å®Ÿè£…ã—ãŸããªã‚‹
+    //ã‹ã‚‚ã—ã‚Œãªã„ã®ã§æ•¢ãˆã¦ã“ã“ã§ã¯å®Ÿè£…ã—ãªã„(å¿…è¦ãªã‚‰ã‚³ãƒ”ãƒš)
 };
 */
 ///////////////////////////////////////////////////////////////////////////////
 typedef KbKpiUnknownImpl<IKpiTagInfo> KbKpiTagInfoImpl;
 /*
 class KbKpiTagInfoImpl : public KbKpiUnknownImpl<IKpiTagInfo>
-{//–{‘Ì‚ªÀ‘•
- //ƒfƒR[ƒ_ƒvƒ‰ƒOƒCƒ“‚Íg—p‚·‚é‚Ì‚İBÀ‘••s—v
- //ƒA[ƒJƒCƒuƒvƒ‰ƒOƒCƒ“‚Íg—p‚àÀ‘•‚à•s—v
+{//æœ¬ä½“ãŒå®Ÿè£…
+ //ãƒ‡ã‚³ãƒ¼ãƒ€ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã¯ä½¿ç”¨ã™ã‚‹ã®ã¿ã€‚å®Ÿè£…ä¸è¦
+ //ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã¯ä½¿ç”¨ã‚‚å®Ÿè£…ã‚‚ä¸è¦
 public:
-    //IKpiTagInfo ”h¶
-    //ˆÈ‰º‚Í•K‚¸À‘•‚µ‚È‚¯‚ê‚Î‚È‚ç‚È‚¢
+    //IKpiTagInfo æ´¾ç”Ÿ
+    //ä»¥ä¸‹ã¯å¿…ãšå®Ÿè£…ã—ãªã‘ã‚Œã°ãªã‚‰ãªã„
     void WINAPI aSetValueA(const char    *cszNameA,   int nNameSize,  //Name: Ansi
                            const char    *cszValueA,  int nValueSize);//Value:Ansi
     void WINAPI aSetValueW(const char    *cszNameA,   int nNameSize,  //Name: Ansi
                            const wchar_t *cszValueW,  int nValueSize);//Value: Utf16
     void WINAPI aSetValueU8(const char   *cszNameA,   int nNameSize,  //Name: Ansi
                             const char   *cszValueU8, int nValueSize);//Value: Utf8
-    //Name=utf16 ”Å
+    //Name=utf16 ç‰ˆ
     void WINAPI wSetValueA(const wchar_t  *cszNameW,   int nNameSize,  //Name: utf15
                            const char     *cszValueA,  int nValueSize);//Value; Ansi
     void WINAPI wSetValueW(const wchar_t  *cszNameW,   int nNameSize,  //Name: Utf16
                            const wchar_t  *cszValueW,  int nValueSize);//Value: Utf16
     void WINAPI wSetValueU8(const wchar_t *cszNameW,   int nNameSize,  //Name; utf16
                             const char    *cszValueU8, int nValueSize);//Utf8: utf8
-    //Name=utf8 ”Å
+    //Name=utf8 ç‰ˆ
     void WINAPI u8SetValueA(const char    *cszNameU8,  int nNameSize,  //Name: utf8
                             const char    *cszValueA,  int nValueSize);//Value: Ansi
     void WINAPI u8SetValueW(const char    *cszNameU8,  int nNameSize,  //Name; utf8
