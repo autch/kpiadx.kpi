@@ -82,13 +82,12 @@ if(KPIADX_BUILD_TOOLS)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/fixtures.py seek-check ${fixtures_dir}
           --cli $<TARGET_FILE:kpi-render> ${emulator_args})
       set_tests_properties(seek-check-fixtures PROPERTIES FIXTURES_REQUIRED fixtures)
-    endif()
-    if(KPIADX_TEST_DATA)
-      file(GLOB_RECURSE test_data CONFIGURE_DEPENDS
-        ${KPIADX_TEST_DATA}/*.adx ${KPIADX_TEST_DATA}/*.aax ${KPIADX_TEST_DATA}/*.afs
-        ${KPIADX_TEST_DATA}/*.ADX ${KPIADX_TEST_DATA}/*.AAX ${KPIADX_TEST_DATA}/*.AFS)
-      list(REMOVE_DUPLICATES test_data)   # Windows ではファイル名の大文字と小文字を区別しない
-      add_test(NAME seek-check-data COMMAND kpi-render --seek-check ${test_data})
+      # ファイルが多いとコマンドラインの長さの上限を超えるので、fixtures.py が分けて kpi-render に渡す
+      if(KPIADX_TEST_DATA)
+        add_test(NAME seek-check-data
+          COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/fixtures.py seek-check-data
+            ${KPIADX_TEST_DATA} --cli $<TARGET_FILE:kpi-render> ${emulator_args})
+      endif()
     endif()
   endif()
 endif()

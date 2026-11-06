@@ -66,8 +66,8 @@ ctest -C Release
   先頭から続けて Render した結果と一致するかを確かめる。途中へのシークでは ADX の履歴を 0 から
   始めるので、シーク直後の 4096 フレームまでは違ってよい。先頭と 2 周目以降のループ開始位置は
   最初から一致しなければならない
-- `seek-check-data` — `-DKPIADX_TEST_DATA=<ディレクトリ>` を指定したときだけ、その中の
-  ADX / AAX / AFS で seek-check を行う
+- `seek-check-data` — `-DKPIADX_TEST_DATA=<ディレクトリ>` を指定したときだけ、その下にある
+  ADX / AAX / AFS をすべて探して seek-check を行う (Python 3 が要る)
 
 クロスビルドでは、`CMAKE_CROSSCOMPILING_EMULATOR` (wine など) を指定したときだけテストを登録する。
 

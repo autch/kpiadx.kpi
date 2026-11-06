@@ -4,6 +4,7 @@
 usage: fixtures.py generate DIR
        fixtures.py check DIR --cli KPI_RENDER [--emulator WINE]
        fixtures.py seek-check DIR --cli KPI_RENDER [--emulator WINE]
+       fixtures.py seek-check-data DIR --cli KPI_RENDER [--emulator WINE]
 
 generate は DIR に合成した曲と、その期待値 (expected.json、*.raw) を書き出す。
 期待値はこのスクリプトの参照デコーダーで求める。参照デコーダーは kpiadx のコードを
@@ -13,10 +14,12 @@ generate は DIR に合成した曲と、その期待値 (expected.json、*.raw)
   - ループする曲はループ終了位置からループ開始位置に戻り、1 周目と同じ PCM を繰り返す
 check は kpi-render --info のタグと kpi-render の PCM を期待値と比べる。
 seek-check は kpi-render --seek-check を全曲に対して実行する。
+seek-check-data は DIR の下にある ADX/AAX/AFS をすべて探して kpi-render --seek-check にかける。
 外部のモジュールは使わない (Python 3.8 以降の標準ライブラリだけ)。
 """
 
 import argparse
+import concurrent.futures
 import hashlib
 import json
 import math
@@ -29,6 +32,10 @@ ADX_TYPE2_COEFF = [(0x0000, 0x0000), (0x0F00, 0x0000), (0x1CC0, -0x0D00), (0x188
 OPTIONAL_TAGS = ("ADX_InsertedSamples", "ADX_LoopCount", "AAX_Segments", "Title", "AFS_FileDate")
 SAMPLES_PER_BLOCK = 32      # 18 バイトのブロック、4 ビット
 BLOCK_SIZE = 18
+DATA_EXTENSIONS = (".adx", ".aax", ".afs")
+# Windows のコマンドラインは 32767 文字までなので、ファイルをこの数ずつに分けて kpi-render に渡す。
+# 分けた組は CPU の数だけ並列に動かす
+SEEK_CHECK_BATCH = 8
 
 
 def clip16(value):
@@ -462,17 +469,37 @@ def check(args):
     return 1 if fails else 0
 
 
+def run_seek_check(args, paths):
+    batches = [paths[start:start + SEEK_CHECK_BATCH] for start in range(0, len(paths), SEEK_CHECK_BATCH)]
+    returncode = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 1) as pool:
+        # 結果はファイルの順に出す
+        for result in pool.map(lambda batch: run_cli(args, ["--seek-check"] + batch), batches):
+            sys.stdout.write(result.stderr.decode(errors="replace"))
+            returncode = returncode or result.returncode
+    return returncode
+
+
 def seek_check(args):
     with open(os.path.join(args.dir, "expected.json"), encoding="utf-8") as fp:
         files = sorted(set(entry["file"] for entry in json.load(fp)))
-    result = run_cli(args, ["--seek-check"] + [os.path.join(args.dir, name) for name in files])
-    sys.stdout.write(result.stderr.decode(errors="replace"))
-    return result.returncode
+    return run_seek_check(args, [os.path.join(args.dir, name) for name in files])
+
+
+def seek_check_data(args):
+    paths = []
+    for root, dirs, files in os.walk(args.dir):
+        dirs.sort()
+        paths += [os.path.join(root, name) for name in sorted(files) if name.lower().endswith(DATA_EXTENSIONS)]
+    if not paths:
+        print("no ADX/AAX/AFS in %s" % args.dir)
+        return 1
+    return run_seek_check(args, paths)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", choices=["generate", "check", "seek-check"])
+    parser.add_argument("command", choices=["generate", "check", "seek-check", "seek-check-data"])
     parser.add_argument("dir")
     parser.add_argument("--cli", help="kpi-render の実行ファイル")
     parser.add_argument("--emulator", nargs="+", help="kpi-render を動かすコマンド (wine など)")
@@ -481,7 +508,8 @@ def main():
         return generate(args.dir)
     if not args.cli:
         parser.error("--cli is required")
-    return check(args) if args.command == "check" else seek_check(args)
+    commands = {"check": check, "seek-check": seek_check, "seek-check-data": seek_check_data}
+    return commands[args.command](args)
 
 
 if __name__ == "__main__":
