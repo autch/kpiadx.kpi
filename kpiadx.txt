@@ -1,29 +1,58 @@
-
 kpiadx.kpi
 ==========
 
-CRI ミドルウェア社の ADX フォーマット音声ファイルを再生する KbMedia 
-Player 用プラグインです．対応する拡張子は .adx, .afs です．
+CRI ミドルウェア社の ADX フォーマット音声ファイルを再生する KbMedia
+Player 用プラグインです．対応する拡張子は .adx, .aax, .afs です．
 
 ADX フォーマットのいわゆるバージョン 3 と 4 に対応します。エンコードタイ
-プが「3: リニア」以外の形式への対応は実装はしたものの、データを持ってい
-ないため正しく再生できるかどうかはわかりません。AHX および暗号化 ADX に
-は対応していません。
+プが「3: リニア」以外の形式は、手元にデータがないため、実際のゲームのデー
+タで正しく再生できるかどうかはわかりません。AHX および暗号化 ADX には対
+応していません。
 
-AFS アーカイブは 1 ファイル複数曲として開くことができます。
+3 チャンネル以上の ADX も再生できます。
 
-v2.0 から瞬時シークに対応しています。
+AAX (ADX をいくつかつないだもの) は 1 曲として再生します。ループの印が付
+いたところをループします。
+
+AFS アーカイブは 1 ファイル複数曲として開くことができます。AFS にファイ
+ル名の表があれば、そのファイル名を曲名とします。曲名ではなくファイル名な
+ので、拡張子も付いたままです。ファイルの日時が入っていれば、詳細情報の
+AFS_FileDate に出します。
+
+ADX の先頭にはループ位置を揃えるための無音が足されていることがあります。
+これは再生せずに読み飛ばします。曲の長さとループ位置もこの分を差し引いた
+ものになります。
+
+v2.0 から瞬時シークに対応しています。曲の途中にシークした直後は、ADX の
+デコードに必要な直前の値が分からないため、ごく短い間だけ元の音と少し違う
+ことがあります。
 
 v2.0 では ADX のスケールを正しく解釈するため、v1 系にあったマスターボリ
 ュームの設定は不要となっています。また曲長計算のためのループ回数も本体の
-設定に従います。
+設定に従います。kpiadx.ini は使いません。
 
-プラグインが KbMedia Player のプラグイン設定で failed to load plug-in と
-言われて ADX ファイルを開けない場合は、「Visual C++ 2022 再頒布可能ファ
-イル」をインストールしてから試してみてください。
+詳細情報には次の項目を出します。
 
-Microsoft Visual C++ Redistributable for Visual Studio 2022
-https://visualstudio.microsoft.com/ja/downloads/#microsoft-visual-c-redistributable-for-visual-studio-2022
+  ADX_EncodingType       エンコードタイプ
+  ADX_Version            ヘッダのバージョン
+  ADX_BlockSize          ブロックの大きさ (バイト)
+  ADX_SampleBitDepth     1 サンプルのビット数
+  ADX_HighPassFrequency  ハイパスフィルタの周波数
+  ADX_TotalSamples       曲のサンプル数 (先頭の無音を除く)
+  ADX_InsertedSamples    先頭に足された無音のサンプル数
+  ADX_LoopCount          ヘッダにあるループ回数
+  ADX_IsLooped           ループするかどうか
+  ADX_LoopStartSample    ループ開始位置 (サンプル)
+  ADX_LoopEndSample      ループ終了位置 (サンプル)
+  ADX_Flags              暗号化されている場合のみ
+  AAX_Segments           AAX のセグメント数
+  AFS_FileDate           AFS のファイル名表にある日時
+
+ADX_InsertedSamples と ADX_LoopCount は、ヘッダにループ情報の欄がある
+ADX のときだけ出します。
+
+C/C++ のランタイムは静的にリンクしているので、Visual C++ の再頒布可能パッ
+ケージは要りません。
 
 
 著作権とか
@@ -39,6 +68,10 @@ https://en.wikipedia.org/wiki/ADX_(file_format)
 https://azuco.sakura.ne.jp/column/ag_adx/cri.html
 https://github.com/Thealexbarney/VGAudio/tree/master/src/VGAudio/Codecs/CriAdx
 
+AAX と AFS のファイル名表、ADX のヘッダの欄の意味は、以下も参照しています。
+https://github.com/vgmstream/vgmstream
+https://github.com/Thealexbarney/VGAudio/tree/master/src/VGAudio/Containers/Adx
+
 ADX フォーマットの解析およびデコーダの実装は，Autch が上記サイトを参考に
 して行ったものです．このプラグインについて CRI ミドルウェア社や各種ソフ
 トの発売元および上記サイトにサポートを求めてはいけません．
@@ -47,7 +80,7 @@ ADX フォーマットの解析およびデコーダの実装は，Autch が上記サイトを参考に
 利用の範囲を超えて，権利者の許可なく利用することはできません．
 
 kpiadx.kpi -- CRI ADX decoder plugin for KbMedia Player
-Copyright (c) 2006, 2010, 2021, Autch
+Copyright (c) 2006, 2010, 2021, 2026, Autch
 
 本ソフトウェアは MIT ライセンスのもとで配布されます。ライセンス全文は 
 COPYING ファイルをご覧ください。
@@ -83,6 +116,21 @@ v2.00 (512) 2021/11/28
 ・Visual Studio 2022 でビルド
 ・KbMedia Player の新プラグイン仕様に対応、AFSの直接再生に対応
 ・現在手に入る情報で実装を一新
+
+次の版 (未リリース)
+
+・AAX に対応
+・AFS のファイル名表から曲名と日時を出すようにした
+・3 チャンネル以上の v4 の ADX でループ位置を読み違えていたのを修正
+・ADX の先頭に足された無音を読み飛ばすようにした
+・詳細情報に ADX_InsertedSamples と ADX_LoopCount を追加
+・ループの継ぎ目で無音が入ったり、2 周目以降の音が 1 周目と違ったりして
+  いたのを修正
+・曲の終わりに余分なサンプルが出ていたのを修正
+・壊れたファイルや不正なヘッダで異常終了しないようにした
+・KbMedia Player プラグイン SDK v3.17beta3 用に更新
+・CMake でビルドするようにし、GitHub Actions で配布用の zip を作るように
+  した
 
 
 ----------------------
