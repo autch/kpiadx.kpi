@@ -484,6 +484,15 @@ void KpiADXDecoder::extract_tags(IKpiTagInfo* pTagInfo) const
 
     set_tag(L"ADX_TotalSamples", L"%u", static_cast<uint32_t>(total_samples_));
 
+    // ループ情報の欄があるのは v3/v4 の ADX だけ(AAX のセグメントにはない)
+    const auto& header = segments_.front().header;
+    if (!song_is_aax_ && header.has_loop_info)
+    {
+        // ADX_TotalSamples とループ位置はこの分を差し引いた値
+        set_tag(L"ADX_InsertedSamples", L"%u", static_cast<uint32_t>(header.loop.inserted_samples));
+        set_tag(L"ADX_LoopCount", L"%u", static_cast<uint32_t>(header.loop.loop_count));
+    }
+
     pTagInfo->wSetValueW(L"ADX_IsLooped", -1, loop_enabled_ ? L"True" : L"False", -1);
     set_tag(L"ADX_LoopStartSample", L"%u", static_cast<uint32_t>(loop_start_sample_));
     set_tag(L"ADX_LoopEndSample", L"%u", static_cast<uint32_t>(loop_end_sample_));
