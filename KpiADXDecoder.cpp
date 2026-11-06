@@ -29,10 +29,14 @@ namespace
         return ntohs(i);
     }
 
-    int16_t predictor(const int16_t coeffs[2], int d, int scale, int16_t s[2])
+    // v3 の ADX を作った初期のライブラリは、予測の 2 項を別々に >> 12 してから足す (vgmstream の "V3 lib")。
+    // エンコーダーと同じ丸めでデコードしないと、無音の区間が 0 にならない
+    int16_t predictor(const int16_t coeffs[2], int d, int scale, bool separate_shift, int16_t s[2])
     {
-        const int predict = coeffs[0] * s[0] + coeffs[1] * s[1];
-        const int s0 = d * scale + (predict >> 12);
+        const int predict = separate_shift
+            ? ((coeffs[0] * s[0]) >> 12) + ((coeffs[1] * s[1]) >> 12)
+            : (coeffs[0] * s[0] + coeffs[1] * s[1]) >> 12;
+        const int s0 = d * scale + predict;
         const auto r = clip<int16_t, int, int16_t>(s0);
         s[1] = s[0];  s[0] = r;
         return r;
@@ -743,7 +747,9 @@ void KpiADXDecoder::decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDes
 {
     const auto& common = seg.header.common;
     int r_scale = get_be<int16_t>(pSource);
-    int scale = r_scale & 0x1fff;
+    // タイプ 2 と 3 では、ヘッダの値に 1 を足したものが scale になる (vgmstream と同じ)。
+    // 足さないと、値が 0 のブロックの差分が消えてしまう
+    int scale = (r_scale & 0x1fff) + 1;
 
     const int16_t* coeff_p = seg.coeff;
     if(common.encoding_type == ADXEncodingType::ADX_FIXED_COEF)
@@ -752,7 +758,8 @@ void KpiADXDecoder::decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDes
         coeff_p = ADX_TYPE2_COEFF[coeff_index];
     }
     if(common.encoding_type == ADXEncodingType::ADX_EXP_SCALE)
-        scale = 1 << (12 - scale);
+        scale = 1 << (12 - (r_scale & 0x1fff));
+    const bool separate_shift = common.version == ADXVersion::ADX_VERSION_3;
 
     pSource += 2;
     bitstream b(pSource, common.block_size - sizeof(int16_t));
@@ -763,7 +770,7 @@ void KpiADXDecoder::decodeBlock(const Segment& seg, BYTE* pSource, int16_t* pDes
     {
         int d = b.get(common.sample_bitdepth);
         if (d & sign_mask) d -= sign_decr;
-        *pDest = predictor(coeff_p, d, scale, context.s);
+        *pDest = predictor(coeff_p, d, scale, separate_shift, context.s);
         pDest += channels_;
     }
 }

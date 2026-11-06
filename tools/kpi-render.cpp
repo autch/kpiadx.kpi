@@ -12,7 +12,7 @@
 // --seek-check は全曲について、いろいろな位置にシークしてから半端な長さで Render() した
 //   結果が、先頭から続けて Render() した結果と一致するかを確かめる。
 //   kpiadx は途中へのシークで ADX の履歴を 0 から始めるので、シーク直後の FRAMES
-//   (既定 4096) フレームだけは違ってよい。先頭と 2 周目以降のループ開始位置は
+//   (既定 8192) フレームだけは違ってよい。先頭と 2 周目以降のループ開始位置は
 //   1 周目の状態に戻すので、最初から一致しなければならない。
 // PLUGIN の既定値は kpi-render.exe と同じディレクトリの kpiadx.kpi。
 
@@ -402,7 +402,7 @@ int wmain(int argc, wchar_t** argv)
     std::wstring plugin = defaultPluginPath();
     DWORD track = 1;
     DWORD maxframes = 10000000;
-    DWORD settle = 4096;
+    DWORD settle = 8192;
     bool seek_check = false;
     bool show_info = false;
     std::vector<const wchar_t*> files;

@@ -69,18 +69,26 @@ def make_signal(channels, frames, rate, seed):
     return out
 
 
-def predict(coeff, s0, s1):
+def predict(coeff, s0, s1, version):
+    """v3 は予測の 2 項を別々に >> 12 する (初期のライブラリの丸め)。v4 以降はまとめて >> 12 する"""
+    if version == 3:
+        return ((coeff[0] * s0) >> 12) + ((coeff[1] * s1) >> 12)
     return (coeff[0] * s0 + coeff[1] * s1) >> 12
 
 
-def encode_block(samples, coeff, history, encoding):
+def linear_scale(raw_scale):
+    """タイプ 2 / 3 のブロックの scale。ヘッダの値に 1 を足す"""
+    return (raw_scale & 0x1FFF) + 1
+
+
+def encode_block(samples, coeff, history, encoding, version):
     """1 チャンネル分の 32 サンプルを 1 ブロックにする。history は [s0, s1] で更新される"""
     def quantize(coeff_pair, scale, hist):
         s0, s1 = hist
         nibbles = []
         error = 0
         for x in samples:
-            pred = predict(coeff_pair, s0, s1)
+            pred = predict(coeff_pair, s0, s1, version)
             d = int(round((x - pred) / scale)) if scale else 0
             d = max(-8, min(7, d))
             s = clip16(d * scale + pred)
@@ -93,17 +101,17 @@ def encode_block(samples, coeff, history, encoding):
         s0, s1 = history
         peak = 0
         for x in samples:
-            peak = max(peak, abs(x - predict(coeff_pair, s0, s1)))
+            peak = max(peak, abs(x - predict(coeff_pair, s0, s1, version)))
             s0, s1 = x, s0
         return peak
 
     if encoding == 2:
         best = None
         for index, coeff_pair in enumerate(ADX_TYPE2_COEFF):
-            scale = min(0x1FFF, max(1, -(-estimate_peak(coeff_pair) // 7)))
-            error, nibbles, hist = quantize(coeff_pair, scale, history)
+            raw = min(0x1FFF, max(0, -(-estimate_peak(coeff_pair) // 7) - 1))
+            error, nibbles, hist = quantize(coeff_pair, linear_scale(raw), history)
             if best is None or error < best[0]:
-                best = (error, (index << 13) | scale, nibbles, hist)
+                best = (error, (index << 13) | raw, nibbles, hist)
         _, raw_scale, nibbles, hist = best
     elif encoding == 4:
         peak = estimate_peak(coeff)
@@ -113,8 +121,8 @@ def encode_block(samples, coeff, history, encoding):
         raw_scale = exponent
         _, nibbles, hist = quantize(coeff, 1 << (12 - exponent), history)
     else:
-        raw_scale = min(0x1FFF, max(1, -(-estimate_peak(coeff) // 7)))
-        _, nibbles, hist = quantize(coeff, raw_scale, history)
+        raw_scale = min(0x1FFF, max(0, -(-estimate_peak(coeff) // 7) - 1))
+        _, nibbles, hist = quantize(coeff, linear_scale(raw_scale), history)
 
     history[:] = hist
     body = bytes((nibbles[i] << 4) | nibbles[i + 1] for i in range(0, SAMPLES_PER_BLOCK, 2))
@@ -158,7 +166,7 @@ def make_adx(pcm, rate, version=4, encoding=3, inserted=0, loop=None, loop_info=
         for ch in range(channels):
             chunk = pcm[ch][block * SAMPLES_PER_BLOCK:(block + 1) * SAMPLES_PER_BLOCK]
             chunk += [0] * (SAMPLES_PER_BLOCK - len(chunk))
-            data += encode_block(chunk, coeff, histories[ch], encoding)
+            data += encode_block(chunk, coeff, histories[ch], encoding, version)
     # 終端マーカー (デコーダーはサンプル数で終わりを決めるので読まない)
     data += struct.pack(">H", 0x8001) + bytes(BLOCK_SIZE - 2)
     return bytes(header) + bytes(data)
@@ -240,19 +248,19 @@ def decode_adx(data, history=None):
         for ch in range(channels):
             pos = info["data_offset"] + (block * channels + ch) * info["block_size"]
             raw_scale = struct.unpack_from(">H", data, pos)[0]
-            scale = raw_scale & 0x1FFF
+            scale = linear_scale(raw_scale)
             pair = coeff
             if info["encoding"] == 2:
                 pair = ADX_TYPE2_COEFF[(raw_scale >> 13) & 3]
             elif info["encoding"] == 4:
-                scale = 1 << (12 - scale)
+                scale = 1 << (12 - (raw_scale & 0x1FFF))
             s0, s1 = hist[ch]
             for i in range(spb):
                 byte = data[pos + 2 + i // 2]
                 d = (byte >> 4) if i % 2 == 0 else (byte & 0x0F)
                 if d & 8:
                     d -= 16
-                s = clip16(d * scale + predict(pair, s0, s1))
+                s = clip16(d * scale + predict(pair, s0, s1, info["version"]))
                 s0, s1 = s, s0
                 out[ch].append(s)
             hist[ch] = [s0, s1]

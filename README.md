@@ -64,7 +64,7 @@ ctest -C Release
 - `check-fixtures` — 合成した曲のタグと PCM を、`tools/fixtures.py` の参照デコーダーの結果と照合する
 - `seek-check-fixtures` — いろいろな位置にシークしてから半端な長さで Render した結果が、
   先頭から続けて Render した結果と一致するかを確かめる。途中へのシークでは ADX の履歴を 0 から
-  始めるので、シーク直後の 4096 フレームまでは違ってよい。先頭と 2 周目以降のループ開始位置は
+  始めるので、シーク直後の 8192 フレームまでは違ってよい。先頭と 2 周目以降のループ開始位置は
   最初から一致しなければならない
 - `seek-check-data` — `-DKPIADX_TEST_DATA=<ディレクトリ>` を指定したときだけ、その下にある
   ADX / AAX / AFS をすべて探して seek-check を行う (Python 3 が要る)
