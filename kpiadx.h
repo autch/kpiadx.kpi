@@ -10,11 +10,11 @@
 #define KPIADX_API __declspec(dllimport)
 #endif
 
-#define KPIADX_VERSION   ((2 << 8) | 0)      // 2.0
+#define KPIADX_VERSION   ((2 << 8) | 10)     // 2.10
 
 #ifdef _DEBUG
 #define KPIADX_DESC      L"CRI ADX decoder plugin for KbMedia Player [DEBUG]"
 #else
 #define KPIADX_DESC      L"CRI ADX decoder plugin for KbMedia Player"
 #endif
-#define KPIADX_COPYRIGHT L"Copyright (c) 2006, 2021, Autch."
+#define KPIADX_COPYRIGHT L"Copyright (c) 2006, 2021, 2026, Autch."
