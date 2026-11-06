@@ -350,8 +350,16 @@ bool KpiADXDecoder::addSegment(uint64_t offset, uint64_t size, bool aax_loop)
     }
     seg.offset = offset;
     seg.end_offset = (size > std::numeric_limits<uint64_t>::max() - offset) ? std::numeric_limits<uint64_t>::max() : offset + size;
+    // ループ開始をブロック境界に揃えるため先頭に足された無音は再生しない
+    // ヘッダのサンプル数とループ位置はこれを含む
+    seg.inserted_samples = seg.header.has_loop_info ? seg.header.loop.inserted_samples : 0;
+    if (seg.inserted_samples > common.total_samples)
+    {
+        ::OutputDebugStringW(L"select: inserted samples exceed total samples\n");
+        return false;
+    }
     seg.start_sample = total_samples_;
-    seg.samples = common.total_samples;
+    seg.samples = common.total_samples - seg.inserted_samples;
     seg.aax_loop = aax_loop;
 
     segments_.push_back(seg);
@@ -384,8 +392,17 @@ bool KpiADXDecoder::loadSong()
             loop_enabled_ = false;
             break;
         }
-        loop_start_sample_ = loop.loop_begin_sample_index;
-        loop_end_sample_ = loop.loop_end_sample_index;
+        const uint32_t inserted = segments_.front().inserted_samples;
+        if (loop_enabled_ && loop.loop_begin_sample_index < inserted)
+        {
+            ::OutputDebugStringW(L"select: loop starts in the inserted samples\n");
+            loop_enabled_ = false;
+        }
+        else
+        {
+            loop_start_sample_ = loop.loop_begin_sample_index - inserted;
+            loop_end_sample_ = loop.loop_end_sample_index - inserted;
+        }
     }
     else if (parseAAX(song_file_, aax_segments))
     {
@@ -655,10 +672,12 @@ void KpiADXDecoder::enterSegment(size_t index, uint64_t sample_in_segment, bool 
         std::fill(state_.tail.begin(), state_.tail.end(), ADXContext{});
     }
 
-    state_.next_block = sample_in_segment / seg.samples_per_block;
+    // ADX ストリームの中での位置は挿入サンプルの分だけ後ろ
+    const uint64_t sample_in_stream = sample_in_segment + seg.inserted_samples;
+    state_.next_block = sample_in_stream / seg.samples_per_block;
     song_file_->Seek(static_cast<INT64>(blockOffset(seg, state_.next_block)), FILE_BEGIN);
 
-    const auto samples_to_skip = static_cast<uint32_t>(sample_in_segment % seg.samples_per_block);
+    const auto samples_to_skip = static_cast<uint32_t>(sample_in_stream % seg.samples_per_block);
     if (samples_to_skip > 0)
     {
         decodeNextBlock();

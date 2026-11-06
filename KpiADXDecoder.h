@@ -47,8 +47,9 @@ private:
         int16_t coeff[2]{ 0, 0 };           // ADX filter coefficients
         int samples_per_block{ 0 };         // # of samples stored in an ADX block, for typical 18 bytes block, this is 32
         uint64_t data_offset{ 0 };          // offset of the first block from the beginning of the ADX stream
+        uint32_t inserted_samples{ 0 };     // silent samples at the beginning of the stream, not played
         uint64_t start_sample{ 0 };         // position of the first sample in the song
-        uint64_t samples{ 0 };
+        uint64_t samples{ 0 };              // # of samples played, excluding inserted_samples
         bool aax_loop{ false };             // AAX lpflg
     };
 
