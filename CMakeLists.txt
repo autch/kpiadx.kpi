@@ -3,8 +3,8 @@ project(kpiadx.kpi LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# 配布する .kpi が VC++ ランタイムや libstdc++ の DLL に依存しないようにする
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+# MSVC では、KbMedia Player 本体付属のプラグインと同じく VC++ ランタイムを動的リンクする (既定の /MD)。
+# MinGW (開発中の確認用) では libstdc++ などの DLL に依存しないよう静的リンクする
 
 add_library(kpiadx SHARED
   kpiadx.cpp

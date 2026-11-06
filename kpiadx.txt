@@ -51,8 +51,13 @@ v2.0 では ADX のスケールを正しく解釈するため、v1 系にあったマスターボリ
 ADX_InsertedSamples と ADX_LoopCount は、ヘッダにループ情報の欄がある
 ADX のときだけ出します。
 
-C/C++ のランタイムは静的にリンクしているので、Visual C++ の再頒布可能パッ
-ケージは要りません。
+Visual Studio 2026 でビルドしており、Visual C++ のランタイムを使います。
+プラグインが KbMedia Player のプラグイン設定で failed to load plug-in と
+言われて ADX ファイルを開けない場合は、最新の「Visual C++ 再頒布可能パッ
+ケージ」をインストールしてから試してみてください。
+
+最新の Microsoft Visual C++ 再頒布可能パッケージ
+https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist
 
 
 著作権とか

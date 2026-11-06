@@ -22,17 +22,22 @@ AHX と暗号化 ADX には対応しない。利用者向けの説明は `kpiadx
 
 ## ビルド
 
-リリースビルドは Windows の MSVC (Visual Studio 2022) で行う。
+リリースビルドは Windows の MSVC (Visual Studio 2026) で行う。
 
 ```
-cmake -S . -B build-x64 -G "Visual Studio 17 2022" -A x64
+cmake -S . -B build-x64 -G "Visual Studio 18 2026" -A x64
 cmake --build build-x64 --config Release
-cmake -S . -B build-x86 -G "Visual Studio 17 2022" -A Win32
+cmake -S . -B build-x86 -G "Visual Studio 18 2026" -A Win32
 cmake --build build-x86 --config Release
 ```
 
-`build-*/bin/Release/kpiadx.kpi` ができる。C/C++ ランタイムは静的リンク (`/MT`) なので、
-VC++ 再頒布可能パッケージは要らない。Visual Studio で `kpiadx.sln` を開いてビルドすることもできる。
+`build-*/bin/Release/kpiadx.kpi` ができる。KbMedia Player 本体付属のプラグインと同じく、
+VC++ ランタイムは動的リンク (`/MD`) なので、Visual Studio 2026 に対応した VC++ 再頒布可能パッケージが要る。
+
+Visual Studio で `kpiadx.sln` を開いてビルドすることもできる。`kpiadx.vcxproj` と
+`tools/kpi-render.vcxproj` は CMakeLists.txt と同じ設定にしてあり、`bin\<Platform>\<Configuration>\` に
+`kpiadx.kpi` と `kpi-render.exe` ができる。設定を変えるときは CMakeLists.txt と両方を直すこと。
+テストは CMake でビルドしたときだけ使える。
 
 ### MinGW (開発中の確認用)
 
