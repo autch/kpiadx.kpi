@@ -69,7 +69,7 @@ jobs:
           mkdir -p dist/x64 dist/x86
           cp kpi/kpi-x64/kpiadx.kpi dist/x64/
           cp kpi/kpi-x86/kpiadx.kpi dist/x86/
-          cp kpiadx.txt dist/   # Shift_JIS / CRLF のまま入れる
+          cp kpiadx.txt dist/   # UTF-8 (BOM 付き) / CRLF のまま入れる
           cp COPYING dist/
           (cd dist && zip -9 -r "../$name.zip" kpiadx.txt COPYING x64 x86)
           unzip -l "$name.zip"

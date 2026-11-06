@@ -1,141 +1,141 @@
-kpiadx.kpi
+﻿kpiadx.kpi
 ==========
 
-CRI �~�h���E�F�A�Ђ� ADX �t�H�[�}�b�g�����t�@�C�����Đ����� KbMedia
-Player �p�v���O�C���ł��D�Ή�����g���q�� .adx, .aax, .afs �ł��D
+CRI ミドルウェア社の ADX フォーマット音声ファイルを再生する KbMedia
+Player 用プラグインです．対応する拡張子は .adx, .aax, .afs です．
 
-ADX �t�H�[�}�b�g�̂�����o�[�W���� 3 �� 4 �ɑΉ����܂��B�G���R�[�h�^�C
-�v���u3: ���j�A�v�ȊO�̌`���́A�茳�Ƀf�[�^���Ȃ����߁A���ۂ̃Q�[���̃f�[
-�^�Ő������Đ��ł��邩�ǂ����͂킩��܂���BAHX ����шÍ��� ADX �ɂ͑�
-�����Ă��܂���B
+ADX フォーマットのいわゆるバージョン 3 と 4 に対応します。エンコードタイ
+プが「3: リニア」以外の形式は、手元にデータがないため、実際のゲームのデー
+タで正しく再生できるかどうかはわかりません。AHX および暗号化 ADX には対
+応していません。
 
-3 �`�����l���ȏ�� ADX ���Đ��ł��܂��B
+3 チャンネル以上の ADX も再生できます。
 
-AAX (ADX ���������Ȃ�������) �� 1 �ȂƂ��čĐ����܂��B���[�v�̈󂪕t
-�����Ƃ�������[�v���܂��B
+AAX (ADX をいくつかつないだもの) は 1 曲として再生します。ループの印が付
+いたところをループします。
 
-AFS �A�[�J�C�u�� 1 �t�@�C�������ȂƂ��ĊJ�����Ƃ��ł��܂��BAFS �Ƀt�@�C
-�����̕\������΁A���̃t�@�C�������Ȗ��Ƃ��܂��B�Ȗ��ł͂Ȃ��t�@�C������
-�̂ŁA�g���q���t�����܂܂ł��B�t�@�C���̓����������Ă���΁A�ڍ׏���
-AFS_FileDate �ɏo���܂��B
+AFS アーカイブは 1 ファイル複数曲として開くことができます。AFS にファイ
+ル名の表があれば、そのファイル名を曲名とします。曲名ではなくファイル名な
+ので、拡張子も付いたままです。ファイルの日時が入っていれば、詳細情報の
+AFS_FileDate に出します。
 
-ADX �̐擪�ɂ̓��[�v�ʒu�𑵂��邽�߂̖�����������Ă��邱�Ƃ�����܂��B
-����͍Đ������ɓǂݔ�΂��܂��B�Ȃ̒����ƃ��[�v�ʒu�����̕�������������
-���̂ɂȂ�܂��B
+ADX の先頭にはループ位置を揃えるための無音が足されていることがあります。
+これは再生せずに読み飛ばします。曲の長さとループ位置もこの分を差し引いた
+ものになります。
 
-v2.0 ����u���V�[�N�ɑΉ����Ă��܂��B�Ȃ̓r���ɃV�[�N��������́AADX ��
-�f�R�[�h�ɕK�v�Ȓ��O�̒l��������Ȃ����߁A�����Z���Ԃ������̉��Ə����Ⴄ
-���Ƃ�����܂��B
+v2.0 から瞬時シークに対応しています。曲の途中にシークした直後は、ADX の
+デコードに必要な直前の値が分からないため、ごく短い間だけ元の音と少し違う
+ことがあります。
 
-v2.0 �ł� ADX �̃X�P�[���𐳂������߂��邽�߁Av1 �n�ɂ������}�X�^�[�{��
-���[���̐ݒ�͕s�v�ƂȂ��Ă��܂��B�܂��Ȓ��v�Z�̂��߂̃��[�v�񐔂��{�̂�
-�ݒ�ɏ]���܂��Bkpiadx.ini �͎g���܂���B
+v2.0 では ADX のスケールを正しく解釈するため、v1 系にあったマスターボリ
+ュームの設定は不要となっています。また曲長計算のためのループ回数も本体の
+設定に従います。kpiadx.ini は使いません。
 
-�ڍ׏��ɂ͎��̍��ڂ��o���܂��B
+詳細情報には次の項目を出します。
 
-  ADX_EncodingType       �G���R�[�h�^�C�v
-  ADX_Version            �w�b�_�̃o�[�W����
-  ADX_BlockSize          �u���b�N�̑傫�� (�o�C�g)
-  ADX_SampleBitDepth     1 �T���v���̃r�b�g��
-  ADX_HighPassFrequency  �n�C�p�X�t�B���^�̎��g��
-  ADX_TotalSamples       �Ȃ̃T���v���� (�擪�̖���������)
-  ADX_InsertedSamples    �擪�ɑ����ꂽ�����̃T���v����
-  ADX_LoopCount          �w�b�_�ɂ��郋�[�v��
-  ADX_IsLooped           ���[�v���邩�ǂ���
-  ADX_LoopStartSample    ���[�v�J�n�ʒu (�T���v��)
-  ADX_LoopEndSample      ���[�v�I���ʒu (�T���v��)
-  ADX_Flags              �Í�������Ă���ꍇ�̂�
-  AAX_Segments           AAX �̃Z�O�����g��
-  AFS_FileDate           AFS �̃t�@�C�����\�ɂ������
+  ADX_EncodingType       エンコードタイプ
+  ADX_Version            ヘッダのバージョン
+  ADX_BlockSize          ブロックの大きさ (バイト)
+  ADX_SampleBitDepth     1 サンプルのビット数
+  ADX_HighPassFrequency  ハイパスフィルタの周波数
+  ADX_TotalSamples       曲のサンプル数 (先頭の無音を除く)
+  ADX_InsertedSamples    先頭に足された無音のサンプル数
+  ADX_LoopCount          ヘッダにあるループ回数
+  ADX_IsLooped           ループするかどうか
+  ADX_LoopStartSample    ループ開始位置 (サンプル)
+  ADX_LoopEndSample      ループ終了位置 (サンプル)
+  ADX_Flags              暗号化されている場合のみ
+  AAX_Segments           AAX のセグメント数
+  AFS_FileDate           AFS のファイル名表にある日時
 
-ADX_InsertedSamples �� ADX_LoopCount �́A�w�b�_�Ƀ��[�v���̗�������
-ADX �̂Ƃ������o���܂��B
+ADX_InsertedSamples と ADX_LoopCount は、ヘッダにループ情報の欄がある
+ADX のときだけ出します。
 
-Visual Studio 2026 �Ńr���h���Ă���AVisual C++ �̃����^�C�����g���܂��B
-�v���O�C���� KbMedia Player �̃v���O�C���ݒ�� failed to load plug-in ��
-������ ADX �t�@�C�����J���Ȃ��ꍇ�́A�ŐV�́uVisual C++ �ĔЕz�\�p�b
-�P�[�W�v���C���X�g�[�����Ă��玎���Ă݂Ă��������B
+Visual Studio 2026 でビルドしており、Visual C++ のランタイムを使います。
+プラグインが KbMedia Player のプラグイン設定で failed to load plug-in と
+言われて ADX ファイルを開けない場合は、最新の「Visual C++ 再頒布可能パッ
+ケージ」をインストールしてから試してみてください。
 
-�ŐV�� Microsoft Visual C++ �ĔЕz�\�p�b�P�[�W
+最新の Microsoft Visual C++ 再頒布可能パッケージ
 https://learn.microsoft.com/ja-jp/cpp/windows/latest-supported-vc-redist
 
 
-���쌠�Ƃ�
+著作権とか
 ----------
 
-ADX �t�H�[�}�b�g�ɂ��Ĉȉ��̃T�C�g���Q�l�ɂ��܂����D
+ADX フォーマットについて以下のサイトを参考にしました．
 http://ku-www.ss.titech.ac.jp/~yatsushi/
 http://www.geocities.co.jp/Playtown/2004/
 http://www.smallnews.net/azuco/
 
-v2.0 �ł͈ȉ��̎������Q�Ƃ��Ă��܂��B
+v2.0 では以下の資料を参照しています。
 https://en.wikipedia.org/wiki/ADX_(file_format)
 https://azuco.sakura.ne.jp/column/ag_adx/cri.html
 https://github.com/Thealexbarney/VGAudio/tree/master/src/VGAudio/Codecs/CriAdx
 
-AAX �� AFS �̃t�@�C�����\�AADX �̃w�b�_�̗��̈Ӗ��́A�ȉ����Q�Ƃ��Ă��܂��B
+AAX と AFS のファイル名表、ADX のヘッダの欄の意味は、以下も参照しています。
 https://github.com/vgmstream/vgmstream
 https://github.com/Thealexbarney/VGAudio/tree/master/src/VGAudio/Containers/Adx
 
-ADX �t�H�[�}�b�g�̉�͂���уf�R�[�_�̎����́CAutch ����L�T�C�g���Q�l��
-���čs�������̂ł��D���̃v���O�C���ɂ��� CRI �~�h���E�F�A�Ђ�e��\�t
-�g�̔���������я�L�T�C�g�ɃT�|�[�g�����߂Ă͂����܂���D
+ADX フォーマットの解析およびデコーダの実装は，Autch が上記サイトを参考に
+して行ったものです．このプラグインについて CRI ミドルウェア社や各種ソフ
+トの発売元および上記サイトにサポートを求めてはいけません．
 
-�e�\�t�g���璊�o�����f�[�^�͂��̒��쌠�҂̒��앨�ł��D����璘�앨�����I
-���p�͈̔͂𒴂��āC�����҂̋��Ȃ����p���邱�Ƃ͂ł��܂���D
+各ソフトから抽出したデータはその著作権者の著作物です．これら著作物を私的
+利用の範囲を超えて，権利者の許可なく利用することはできません．
 
 kpiadx.kpi -- CRI ADX decoder plugin for KbMedia Player
 Copyright (c) 2006, 2010, 2021, 2026, Autch
 
-�{�\�t�g�E�F�A�� MIT ���C�Z���X�̂��ƂŔz�z����܂��B���C�Z���X�S���� 
-COPYING �t�@�C�����������������B
+本ソフトウェアは MIT ライセンスのもとで配布されます。ライセンス全文は 
+COPYING ファイルをご覧ください。
 
 
-���ŗ���
+改版履歴
 --------
 
 Version 1.00 (256) 2006/03/12
 
-  ����
+  初版
 
 Version 1.01 (257) 2006/03/13
 
-  �E�A���g�l���R�� SE �𒮂��Ă��ĉ����ꂪ�C�ɂȂ����̂ŁCini �t�@�C��
-  �Ń}�X�^�[�{�����[���𒲐��ł���悤�ɂ����D
+  ・アルトネリコの SE を聴いていて音割れが気になったので，ini ファイル
+  でマスターボリュームを調整できるようにした．
 
-  �E���[�v�񐔂��w��ł���悤�ɂ����D
+  ・ループ回数も指定できるようにした．
 
 Version 1.02 (258) 2006/03/15
 
-  �E�l�b�g���[�N�h���C�u�ɒu�����t�@�C�����Đ������悤�Ƃ���Ɠ]������
-  �������ɉ������ł��܂��Ă����̂��C���D�f�R�[�h������ƌ������D
+  ・ネットワークドライブに置いたファイルを再生させようとすると転送が追
+  いつかずに音が飛んでしまっていたのを修正．デコードちょっと効率化．
 
 2010/12/15
 
-�@�E���C�Z���X�ύX�B�Ǝ��̂��̂��� MIT ���C�Z���X�ɁB
-�@�E�R�[�h�̕ύX�͂Ȃ��B
+　・ライセンス変更。独自のものから MIT ライセンスに。
+　・コードの変更はなし。
 
 v2.00 (512) 2021/11/28
 
-�E11�N�Ԃ�̃o�[�W�����A�b�v_(:3 �v��)_
-�EVisual Studio 2022 �Ńr���h
-�EKbMedia Player �̐V�v���O�C���d�l�ɑΉ��AAFS�̒��ڍĐ��ɑΉ�
-�E���ݎ�ɓ�����Ŏ�������V
+・11年ぶりのバージョンアップ_(:3 」∠)_
+・Visual Studio 2022 でビルド
+・KbMedia Player の新プラグイン仕様に対応、AFSの直接再生に対応
+・現在手に入る情報で実装を一新
 
-���̔� (�������[�X)
+次の版 (未リリース)
 
-�EAAX �ɑΉ�
-�EAFS �̃t�@�C�����\����Ȗ��Ɠ������o���悤�ɂ���
-�E3 �`�����l���ȏ�� v4 �� ADX �Ń��[�v�ʒu��ǂ݈Ⴆ�Ă����̂��C��
-�EADX �̐擪�ɑ����ꂽ������ǂݔ�΂��悤�ɂ���
-�E�ڍ׏��� ADX_InsertedSamples �� ADX_LoopCount ��ǉ�
-�E���[�v�̌p���ڂŖ�������������A2 ���ڈȍ~�̉��� 1 ���ڂƈ�����肵��
-  �����̂��C��
-�E�Ȃ̏I���ɗ]���ȃT���v�����o�Ă����̂��C��
-�E��ꂽ�t�@�C����s���ȃw�b�_�ňُ�I�����Ȃ��悤�ɂ���
-�EKbMedia Player �v���O�C�� SDK v3.17beta3 �p�ɍX�V
-�ECMake �Ńr���h����悤�ɂ��AGitHub Actions �Ŕz�z�p�� zip �����悤��
-  ����
+・AAX に対応
+・AFS のファイル名表から曲名と日時を出すようにした
+・3 チャンネル以上の v4 の ADX でループ位置を読み違えていたのを修正
+・ADX の先頭に足された無音を読み飛ばすようにした
+・詳細情報に ADX_InsertedSamples と ADX_LoopCount を追加
+・ループの継ぎ目で無音が入ったり、2 周目以降の音が 1 周目と違ったりして
+  いたのを修正
+・曲の終わりに余分なサンプルが出ていたのを修正
+・壊れたファイルや不正なヘッダで異常終了しないようにした
+・KbMedia Player プラグイン SDK v3.17beta3 用に更新
+・CMake でビルドするようにし、GitHub Actions で配布用の zip を作るように
+  した
 
 
 ----------------------

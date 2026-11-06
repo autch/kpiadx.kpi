@@ -1,4 +1,4 @@
-# KbMedia Player のビューアで読めるように Shift_JIS / CRLF のまま置く (改行を変換しない)
+# KbMedia Player のビューアで読めるように UTF-8 (BOM 付き) / CRLF のまま置く (改行を変換しない)
 kpiadx.txt -text
 kpiadx.ini -text
 # SDK のヘッダは原本のまま (UTF-8 BOM 付き / CRLF) 置く

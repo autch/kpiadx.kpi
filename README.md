@@ -6,7 +6,7 @@ CRI ADX の音声を再生する KbMedia Player のデコーダプラグイン�
 - AAX (ADX のセグメントを @UTF の表でつないだもの)
 - AFS アーカイブ (1 ファイル複数曲。ファイル名表があれば曲名と日時を出す)
 
-AHX と暗号化 ADX には対応しない。利用者向けの説明は `kpiadx.txt` (Shift_JIS / CRLF) にある。
+AHX と暗号化 ADX には対応しない。利用者向けの説明は `kpiadx.txt` (UTF-8 BOM 付き / CRLF) にある。
 
 ## ファイル
 
